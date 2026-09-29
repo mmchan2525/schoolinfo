@@ -561,10 +561,6 @@ function renderUpcomingEvents(posts) {
     const month = dParts.length === 3 ? `${parseInt(dParts[1])}月` : '—';
     const timeStr = p.time_start ? `<span>⏰ ${escapeHtml(p.time_start)}〜</span>` : '';
     const locStr = p.location ? `<span class="truncate">📍 ${escapeHtml(p.location)}</span>` : '';
-    const itemsHtml = (p.items || []).slice(0, 3).map(it => `
-      <span class="item-tag truncate max-w-[120px]">🎒 ${escapeHtml(it.split('(')[0].trim())}</span>
-    `).join('');
-
     const childBadge = (activeChildId === 'all' && p.child_id && p.child_id !== 'all')
       ? getChildBadgeHtml(p.child_id)
       : '';
@@ -586,8 +582,7 @@ function renderUpcomingEvents(posts) {
                 ${timeStr}
                 ${locStr}
               </div>
-              ${itemsHtml ? `<div class="flex flex-wrap gap-1 mt-1.5">${itemsHtml}</div>` : ''}
-            </div>
+              </div>
           </div>
           <span class="w-6 h-6 rounded-full bg-rose-50 text-rose-500 font-bold text-xs flex items-center justify-center flex-shrink-0">
             ›
