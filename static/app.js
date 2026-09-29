@@ -506,9 +506,9 @@ function renderChildTabs() {
 
   if (children.length === 0) {
     tabsHtml += `
-      <button onclick="openSettingsModal('children')" class="child-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 border border-dashed border-rose-300 text-rose-600 hover:bg-rose-50">
+      <a href="#/settings" class="child-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 border border-dashed border-rose-300 text-rose-600 hover:bg-rose-50 no-underline">
         <span>＋</span> <span>お子さんを登録</span>
-      </button>
+      </a>
     `;
   }
 
@@ -946,9 +946,9 @@ function renderChildSelector(containerId, currentSelectedId, onSelectFnName) {
 
   if (children.length === 0) {
     html += `
-      <button type="button" onclick="openSettingsModal('children')" class="px-2.5 py-1.5 text-xs text-rose-500 font-bold hover:underline flex items-center gap-1">
+      <a href="#/settings" class="px-2.5 py-1.5 text-xs text-rose-500 font-bold hover:underline flex items-center gap-1 no-underline">
         <span>＋ お子さんを登録する</span>
-      </button>
+      </a>
     `;
   }
 
@@ -2090,16 +2090,24 @@ function submitEditPost(e) {
   renderDetailPage(editPostId);
 }
 
-// --- 設定モーダル ＆ お子さん管理（追加・編集・削除） ---
-function openSettingsModal(tab) {
+// --- 設定画面 ＆ お子さん管理（追加・編集・削除） ---
+function renderSettingsPage() {
   const settings = DB.getSettings();
-  document.getElementById('settingUserName').value = settings.user_name || 'ゲスト';
-  document.getElementById('settingApiKey').value = settings.gemini_api_key || '';
+  const nameEl = document.getElementById('settingUserName');
+  if (nameEl) nameEl.value = settings.user_name || 'ゲスト';
+  const keyEl = document.getElementById('settingApiKey');
+  if (keyEl) keyEl.value = settings.gemini_api_key || '';
   resetChildForm();
   renderSettingsChildren();
   renderSettingsTags();
-  document.getElementById('settingsModal').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
+}
+
+function openSettingsModal(tab) {
+  window.location.hash = '#/settings';
+}
+
+function closeSettingsModal() {
+  window.location.hash = '#/';
 }
 
 function setChildGenderForm(gender) {
@@ -2317,10 +2325,7 @@ function deleteChildFromSettings(childId) {
 
 
 
-function closeSettingsModal() {
-  document.getElementById('settingsModal').classList.add('hidden');
-  document.body.style.overflow = '';
-}
+
 
 function saveSettings(e) {
   e.preventDefault();
