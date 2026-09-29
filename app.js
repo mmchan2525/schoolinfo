@@ -2136,11 +2136,19 @@ function renderSettingsChildren() {
     return;
   }
 
-  container.innerHTML = children.map(c => {
+  container.innerHTML = children.map((c, index) => {
     const isGirl = (c.icon === '👧' || c.color === 'pink');
     const displayIcon = isGirl ? '👧' : '👦';
     const gradeStr = c.grade ? ` (${escapeHtml(c.grade)})` : '';
     const badgeBg = isGirl ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-sky-50 text-sky-700 border-sky-200';
+
+    const upBtn = (index > 0)
+      ? `<button type="button" onclick="moveChildOrder('${c.id}', 'up')" class="w-6 h-6 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center text-[10px] font-bold transition shadow-2xs" title="上へ並び替え">▲</button>`
+      : `<span class="w-6 h-6"></span>`;
+
+    const downBtn = (index < children.length - 1)
+      ? `<button type="button" onclick="moveChildOrder('${c.id}', 'down')" class="w-6 h-6 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center text-[10px] font-bold transition shadow-2xs" title="下へ並び替え">▼</button>`
+      : `<span class="w-6 h-6"></span>`;
 
     return `
       <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200 shadow-2xs">
@@ -2155,16 +2163,40 @@ function renderSettingsChildren() {
           </div>
         </div>
         <div class="flex items-center gap-1 flex-shrink-0">
+          ${upBtn}
+          ${downBtn}
           <button type="button" onclick="editChildInSettings('${c.id}')" class="px-2 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold transition flex items-center gap-0.5" title="設定を変更">
             <span>✏️</span> <span>変更</span>
           </button>
-          <button type="button" onclick="deleteChildFromSettings('${c.id}')" class="w-7 h-7 rounded-lg bg-stone-100 hover:bg-rose-50 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs font-bold transition" title="削除">
+          <button type="button" onclick="deleteChildFromSettings('${c.id}')" class="w-6 h-6 rounded-lg bg-stone-100 hover:bg-rose-50 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs font-bold transition" title="削除">
             ✕
           </button>
         </div>
       </div>
     `;
   }).join('');
+}
+
+function moveChildOrder(childId, direction) {
+  const settings = DB.getSettings();
+  const children = Array.isArray(settings.children) ? [...settings.children] : [];
+  const idx = children.findIndex(c => String(c.id) === String(childId));
+  if (idx === -1) return;
+
+  const targetIdx = (direction === 'up') ? idx - 1 : idx + 1;
+  if (targetIdx < 0 || targetIdx >= children.length) return;
+
+  // Swap
+  const temp = children[idx];
+  children[idx] = children[targetIdx];
+  children[targetIdx] = temp;
+
+  settings.children = children;
+  DB.saveSettings(settings);
+
+  renderSettingsChildren();
+  renderChildTabs();
+  renderHomePage();
 }
 
 function editChildInSettings(childId) {
