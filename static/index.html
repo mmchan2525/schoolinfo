@@ -11,7 +11,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="./style.css?v=20260921_v18">
+  <link rel="stylesheet" href="./style.css?v=20260930_v20">
   <link rel="manifest" href="./manifest.json">
   
   <!-- iOS Safari PWA / WebClip Settings -->
@@ -82,13 +82,11 @@
           <!-- M3 Filter Chips (タグフィルター - 横スクロール) -->
           <div class="flex items-center gap-1.5 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar text-xs">
             <button onclick="filterByTag('all', this)" class="tag-filter-btn active">すべて</button>
-            <button onclick="filterByTag('英語・UOI', this)" class="tag-filter-btn">📚 英語・UOI</button>
-            <button onclick="filterByTag('中国語', this)" class="tag-filter-btn">🀄 中国語</button>
-            <button onclick="filterByTag('アート', this)" class="tag-filter-btn">🎨 アート</button>
-            <button onclick="filterByTag('Music', this)" class="tag-filter-btn">🎵 Music</button>
-            <button onclick="filterByTag('学校行事', this)" class="tag-filter-btn">🏫 学校行事</button>
-            <button onclick="filterByTag('提出物あり', this)" class="tag-filter-btn">⚠️ 提出物</button>
-            <button onclick="filterByTag('Dgaeden', this)" class="tag-filter-btn">🌱 Dgaeden</button>
+            <button onclick="filterByTag('English', this)" class="tag-filter-btn">📚 English</button>
+            <button onclick="filterByTag('Math', this)" class="tag-filter-btn">🔢 Math</button>
+            <button onclick="filterByTag('Mandarin', this)" class="tag-filter-btn">🀄 Mandarin</button>
+            <button onclick="filterByTag('event', this)" class="tag-filter-btn">🏫 event</button>
+            <button onclick="filterByTag('その他', this)" class="tag-filter-btn">🏷️ その他</button>
           </div>
 
           <!-- おたよりカードリスト (横書き・コンパクト) -->
@@ -447,6 +445,6 @@
 
   </div>
 
-  <script src="./app.js?v=20260921_v18"></script>
+  <script src="./app.js?v=20260930_v20"></script>
 </body>
 </html>

@@ -1,3 +1,73 @@
+// 🏷️ タグバッジHTML生成 ＆ 正規化（English, Math, Mandarin, event, その他）
+function getTagBadgeHtml(t) {
+  let color = 'bg-stone-100 text-stone-700 border border-stone-200', icon = '🏷️';
+  let label = t;
+  if (t === 'English' || t.includes('English') || t.includes('英語') || t.includes('UOI')) {
+    color = 'bg-blue-50 text-blue-700 border border-blue-200';
+    icon = '📚';
+    label = 'English';
+  } else if (t === 'Math' || t.includes('Math') || t.includes('算数') || t.includes('数学')) {
+    color = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    icon = '🔢';
+    label = 'Math';
+  } else if (t === 'Mandarin' || t.includes('Mandarin') || t.includes('中国語') || t.includes('Chinese')) {
+    color = 'bg-rose-50 text-rose-700 border border-rose-200';
+    icon = '🀄';
+    label = 'Mandarin';
+  } else if (t === 'event' || t === 'Event' || t.includes('event') || t.includes('Event') || t.includes('行事') || t.includes('イベント')) {
+    color = 'bg-purple-50 text-purple-700 border border-purple-200';
+    icon = '🏫';
+    label = 'event';
+  } else {
+    color = 'bg-stone-100 text-stone-700 border border-stone-200';
+    icon = '🏷️';
+    label = 'その他';
+  }
+  return `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${color}">${icon} ${escapeHtml(label)}</span>`;
+}
+
+function normalizeTags(rawTags, contentText = '') {
+  const text = (contentText || '').toLowerCase();
+  const normalized = [];
+
+  if (Array.isArray(rawTags)) {
+    for (const t of rawTags) {
+      if (t === 'English' || t.includes('English') || t.includes('英語') || t.includes('UOI')) {
+        if (!normalized.includes('English')) normalized.push('English');
+      } else if (t === 'Math' || t.includes('Math') || t.includes('算数') || t.includes('数学')) {
+        if (!normalized.includes('Math')) normalized.push('Math');
+      } else if (t === 'Mandarin' || t.includes('Mandarin') || t.includes('中国語') || t.includes('Chinese')) {
+        if (!normalized.includes('Mandarin')) normalized.push('Mandarin');
+      } else if (t === 'event' || t === 'Event' || t.includes('event') || t.includes('行事') || t.includes('イベント')) {
+        if (!normalized.includes('event')) normalized.push('event');
+      } else if (t === 'その他') {
+        if (!normalized.includes('その他')) normalized.push('その他');
+      }
+    }
+  }
+
+  if (normalized.length === 0) {
+    if (text.includes('english') || text.includes('uoi') || text.includes('reading') || text.includes('writing') || text.includes('phonics') || text.includes('spelling') || text.includes('language') || text.includes('英語')) {
+      normalized.push('English');
+    }
+    if (text.includes('math') || text.includes('mathematics') || text.includes('geometry') || text.includes('algebra') || text.includes('算数') || text.includes('数学')) {
+      normalized.push('Math');
+    }
+    if (text.includes('mandarin') || text.includes('chinese') || text.includes('华语') || text.includes('中文') || text.includes('中国語')) {
+      normalized.push('Mandarin');
+    }
+    if (text.includes('event') || text.includes('trip') || text.includes('field trip') || text.includes('festival') || text.includes('ceremony') || text.includes('sports day') || text.includes('concert') || text.includes('party') || text.includes('行事') || text.includes('遠足') || text.includes('イベント')) {
+      normalized.push('event');
+    }
+  }
+
+  if (normalized.length === 0) {
+    normalized.push('その他');
+  }
+
+  return normalized;
+}
+
 // School Info - Standalone SPA Logic for GitHub Pages
 // (C) 2026 Otayori Post / School Info
 
@@ -253,17 +323,7 @@ function renderPostsList(posts) {
     const hasRealImage = Boolean(p.image_url && !p.image_url.includes('no_image.svg'));
     const summaryText = p.summary || p.text_translation || p.image_translation || p.title;
 
-    const tagsHtml = (p.tags || []).map(t => {
-      let color = 'bg-stone-100 text-stone-600', icon = '🏷️';
-      if (t.includes('英語') || t.includes('UOI')) { color = 'bg-blue-50 text-blue-700 border border-blue-200'; icon = '📚'; }
-      else if (t.includes('中国語')) { color = 'bg-rose-50 text-rose-700 border border-rose-200'; icon = '🀄'; }
-      else if (t.includes('アート')) { color = 'bg-purple-50 text-purple-700 border border-purple-200'; icon = '🎨'; }
-      else if (t.includes('Music')) { color = 'bg-pink-50 text-pink-700 border border-pink-200'; icon = '🎵'; }
-      else if (t.includes('行事')) { color = 'bg-emerald-50 text-emerald-700 border border-emerald-200'; icon = '🏫'; }
-      else if (t.includes('提出物')) { color = 'bg-amber-50 text-amber-800 border border-amber-200'; icon = '⚠️'; }
-      else if (t.includes('Dgaeden') || t.includes('dgaeden')) { color = 'bg-teal-50 text-teal-800 border border-teal-200'; icon = '🌱'; }
-      return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${color}">${icon} ${escapeHtml(t)}</span>`;
-    }).join('');
+    const tagsHtml = (normalizeTags(p.tags, summaryText)).map(t => getTagBadgeHtml(t)).join('');
 
     const itemsBadge = (p.items && p.items.length > 0)
       ? `<span class="text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md font-bold text-[10px]">🎒 持ち物 ${p.items.length}点</span>`
@@ -336,15 +396,11 @@ function filterByTag(tag, el) {
 
   cards.forEach(card => {
     const rawTagsStr = card.getAttribute('data-tags') || '';
-    const tagsArr = rawTagsStr.split(',').map(t => t.trim()).filter(Boolean);
+    const tagsArr = normalizeTags(rawTagsStr.split(','));
     let isMatch = false;
 
     if (tag === 'all') {
       isMatch = true;
-    } else if (tag === '英語・UOI') {
-      isMatch = tagsArr.some(t => t.includes('英語') || t.includes('UOI'));
-    } else if (tag === '提出物あり') {
-      isMatch = tagsArr.some(t => t.includes('提出物'));
     } else {
       isMatch = tagsArr.includes(tag);
     }
@@ -393,17 +449,7 @@ function renderDetailPage(postId) {
   const imgUrl = (post.image_url || '').trim();
 
   // タグHTML
-  const tagsHtml = (post.tags || []).map(t => {
-    let color = 'bg-stone-100 text-stone-600', icon = '🏷️';
-    if (t.includes('英語') || t.includes('UOI')) { color = 'bg-blue-50 text-blue-700 border border-blue-200'; icon = '📚'; }
-    else if (t.includes('中国語')) { color = 'bg-rose-50 text-rose-700 border border-rose-200'; icon = '🀄'; }
-    else if (t.includes('アート')) { color = 'bg-purple-50 text-purple-700 border border-purple-200'; icon = '🎨'; }
-    else if (t.includes('Music')) { color = 'bg-pink-50 text-pink-700 border border-pink-200'; icon = '🎵'; }
-    else if (t.includes('行事')) { color = 'bg-emerald-50 text-emerald-700 border border-emerald-200'; icon = '🏫'; }
-    else if (t.includes('提出物')) { color = 'bg-amber-50 text-amber-800 border border-amber-200'; icon = '⚠️'; }
-    else if (t.includes('Dgaeden') || t.includes('dgaeden')) { color = 'bg-teal-50 text-teal-800 border border-teal-200'; icon = '🌱'; }
-    return `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${color}">${icon} ${escapeHtml(t)}</span>`;
-  }).join('');
+  const tagsHtml = (normalizeTags(post.tags, transText)).map(t => getTagBadgeHtml(t)).join('');
 
   // 持ち物HTML
   const itemsHtml = items.length > 0 ? `
@@ -571,13 +617,13 @@ function deleteCurrentPost(id, title) {
 // --- 新規追加画面 ---
 let newSelectedFile = null;
 let newUploadedImageUrl = null;
-let newSelectedTags = ['英語・UOI'];
-const ALL_TAGS = ['英語・UOI', '中国語', 'アート', 'Music', '学校行事', '提出物あり', 'Dgaeden'];
+let newSelectedTags = ['English'];
+const ALL_TAGS = ['English', 'Math', 'Mandarin', 'event', 'その他'];
 
 function renderNewPage() {
   newSelectedFile = null;
   newUploadedImageUrl = null;
-  newSelectedTags = ['英語・UOI'];
+  newSelectedTags = ['English'];
 
   document.getElementById('newRawTextInput').value = '';
   document.getElementById('newSelectedFileName').classList.add('hidden');
@@ -920,6 +966,15 @@ async function callGeminiDirect(apiKey, b64Image, textContent) {
 あなたは学校・幼稚園・インターナショナルスクール等の英語のおたより（Newsletters, Schedule Tables, Event Notices, Handouts）を、保護者向けに極めて分かりやすく丁寧な日本語に翻訳・整理・構造化する専門AIです。
 必ず以下のJSON形式のみを出力してください（Markdownコードブロック不要、純粋なJSON）。
 
+【タグ分類の厳格ルール】
+tags に設定できる値は以下の5種類のみです（複数可）:
+- "English" : 英語学習、UOI、読書、ライティング、Language Arts等
+- "Math" : 算数、数学、幾何、計算等
+- "Mandarin" : 中国語、華語、中文等
+- "event" : 学校行事、遠足（Field Trip）、祝祭（Festival）、発表会、スポーツデー等
+- "その他" : 上記4つに当てはまらないもの（アート、音楽、体育、事務連絡、一般通知等）
+※ 上記以外のタグ名は出力しないでください。該当しないものはすべて "その他" にしてください。
+
 【最重要・翻訳とフォーマットのルール】
 1. 表形式（スケジュール、日時ごとの活動、持ち物・材料一覧等）の翻訳:
    - 表の内容を単に要約したり平坦な文章に縮小せず、保護者がひと目で分かるように**日にち・セッションごとに「==============================」の区切り線を入れて**明確に分離してください。
@@ -987,7 +1042,7 @@ async function callGeminiDirect(apiKey, b64Image, textContent) {
   "text_raw": "メッセージ英語原文（ない場合はnull）",
   "image_translation": "画像内英文の丁寧な日本語全訳・構造化テキスト（表やリストはセッション・日にちごとに==============================で区切って見やすく箇条書き）（画像がない場合はnull）",
   "image_raw": "画像内英文OCR・英語原文（画像がない場合はnull）",
-  "tags": ["英語・UOI", "アート", "持ち物あり"]
+  "tags": ["English"]
 }
 `;
 
@@ -1194,15 +1249,8 @@ async function clientSideTranslateEngine(text, file, b64Image) {
     if (!titleEn) titleEn = "School Notice";
   }
 
-  // タグ
-  const tags = [];
-  if (lower.includes('uoi') || lower.includes('english') || lower.includes('assessment') || lower.includes('identity')) tags.push('英語・UOI');
-  if (lower.includes('chinese') || lower.includes('mandarin')) tags.push('中国語');
-  if (lower.includes('craft') || lower.includes('art')) tags.push('アート');
-  if (lower.includes('music') || lower.includes('concert')) tags.push('Music');
-  if (lower.includes('trip') || lower.includes('ceremony') || lower.includes('festival')) tags.push('学校行事');
-  if (deadline || (items.length > 0 && (lower.includes('due') || lower.includes('return')))) tags.push('提出物あり');
-  if (tags.length === 0) tags.push('英語・UOI');
+  // タグ (English, Math, Mandarin, event, その他)
+  const tags = normalizeTags([], combined);
 
   const summaryJa = textTrans || imageTrans || titleJa;
 
@@ -1462,7 +1510,7 @@ function submitNewPost(e) {
     deadline: document.getElementById('newPostDeadline').value || null,
     deadline_description: document.getElementById('newPostDeadlineDesc').value.trim() || null,
     items: itemsArr,
-    tags: (newSelectedTags && newSelectedTags.length > 0) ? newSelectedTags : ['英語・UOI'],
+    tags: (newSelectedTags && newSelectedTags.length > 0) ? normalizeTags(newSelectedTags) : ['その他'],
     image_url: newUploadedImageUrl
   };
 
@@ -1486,7 +1534,7 @@ function renderEditPage(postId) {
 
   editPostId = postId;
   editUploadedImageUrl = post.image_url || null;
-  editSelectedTags = post.tags ? [...post.tags] : ['英語・UOI'];
+  editSelectedTags = post.tags ? normalizeTags(post.tags) : ['その他'];
 
   const backLink = document.getElementById('editBackLink');
   if (backLink) backLink.href = `#/post/${postId}`;
@@ -1590,7 +1638,7 @@ function submitEditPost(e) {
     deadline: document.getElementById('editPostDeadline').value || null,
     deadline_description: document.getElementById('editPostDeadlineDesc').value.trim() || null,
     items: itemsArr,
-    tags: editSelectedTags.length > 0 ? editSelectedTags : ['英語・UOI'],
+    tags: editSelectedTags.length > 0 ? normalizeTags(editSelectedTags) : ['その他'],
     image_url: editUploadedImageUrl,
     updated_at: new Date().toISOString()
   };
