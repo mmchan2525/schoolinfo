@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>School Info📝 | 学校のおたより翻訳・予定管理</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+  
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link rel="stylesheet" href="/static/style.css?v=20260902_1357">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#EF4444">
+</head>
+<body class="antialiased">
+
+  <!-- メインアプリコンテナ -->
+  <div class="app-container" id="app">
+
+    <!-- 上部ステータスバー（スマホUI風） -->
+    <header class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-stone-200/60 bg-white/80 backdrop-blur sticky top-0 z-30">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl shadow-md shadow-amber-500/30">
+          📝
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg tracking-tight text-stone-800">School Info📝</h1>
+          <p class="text-xs text-stone-500 font-medium">こんにちは、<span id="userNameDisplay">めぐ</span>さん</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <!-- 🔄 更新ボタン -->
+        <button onclick="refreshAllData()" id="headerRefreshBtn" title="最新データを再読み込み" class="p-2 rounded-xl text-stone-600 hover:bg-stone-100 active:scale-95 transition flex items-center justify-center">
+          <i data-lucide="rotate-cw" class="w-5 h-5 text-amber-600"></i>
+        </button>
+        <!-- ⚙️ 設定ボタン -->
+        <button onclick="openSettingsModal()" title="設定" class="p-2 rounded-xl text-stone-600 hover:bg-stone-100 active:scale-95 transition flex items-center justify-center">
+          <i data-lucide="settings" class="w-5 h-5 text-stone-600"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- メインスクロールエリア -->
+    <main class="flex-1 px-4 py-4 space-y-5 pb-28">
+
+      <!-- 検索バー（日英全文検索） -->
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input type="text" id="searchInput" placeholder="🔍 持ち物・行事・英語で検索 (例: 水筒, lunch, slip)..."
+               class="w-full pl-10 pr-9 py-2.5 bg-white border border-stone-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400/40 focus:border-red-500 transition shadow-sm"
+               oninput="handleSearch()">
+        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- ⚠️ 提出物・締切アラート（ある場合） -->
+      <section id="deadlineSection" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-red-600 uppercase tracking-wider">
+            <span>⚠️ 提出物・締切アラート</span>
+          </div>
+          <span id="deadlineCount" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">0件</span>
+        </div>
+        <div id="deadlineList" class="space-y-2">
+          <!-- JSで動的レンダリング -->
+        </div>
+      </section>
+
+      <!-- 📅 直近の予定（予定・持ち物） -->
+      <section>
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-stone-700 uppercase tracking-wider">
+            <span>📅 直近の予定 ＆ 🎒 持ち物</span>
+          </div>
+        </div>
+        <div id="upcomingEventsList" class="space-y-2.5">
+          <!-- 直近の予定リスト -->
+          
+            <div class="otayori-card p-3.5 flex items-center justify-between gap-3 cursor-pointer hover:border-sky-300 transition" onclick="openDetailModal('92d77224')">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="date-badge">
+                  <span class="day">07</span>
+                  <span class="month">9月</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <h4 class="font-extrabold text-xs text-stone-800 truncate">第 1 四半期、第 5 週のお知らせ（UOI評価タスク）</h4>
+                  </div>
+                  <div class="flex items-center gap-1 mt-1 text-[11px] text-stone-500">
+                    <span>⏰ 08:30〜</span>
+                    <span class="truncate">📍 学校 / 各教室 (School Campus)</span>
+                  </div>
+                  <div class="flex flex-wrap gap-1 mt-1.5">
+                    <span class="item-tag truncate max-w-[140px]">🎒 靴箱・シューズボックス</span><span class="item-tag truncate max-w-[140px]">🎒 装飾用ステッカー</span><span class="item-tag truncate max-w-[140px]">🎒 お子様の個人写真 1枚</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+        </div>
+      </section>
+
+      <!-- 📑 おたより一覧セクション -->
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-stone-700 uppercase tracking-wider">
+            <span>📑 届いたおたより一覧</span>
+          </div>
+          <span id="postsCount" class="text-xs text-stone-400 font-semibold">0件</span>
+        </div>
+
+        <!-- タグフィルター -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar text-xs">
+          <button onclick="filterByTag('all')" class="tag-filter-btn active px-3 py-1.5 rounded-full font-bold bg-stone-800 text-white shadow-sm transition whitespace-nowrap">すべて</button>
+          <button onclick="filterByTag('英語・UOI')" class="tag-filter-btn px-3 py-1.5 rounded-full font-bold bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 transition whitespace-nowrap">📚 英語・UOI</button>
+          <button onclick="filterByTag('中国語')" class="tag-filter-btn px-3 py-1.5 rounded-full font-bold bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 transition whitespace-nowrap">🀄 中国語</button>
+          <button onclick="filterByTag('アート')" class="tag-filter-btn px-3 py-1.5 rounded-full font-bold bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 transition whitespace-nowrap">🎨 アート</button>
+          <button onclick="filterByTag('Music')" class="tag-filter-btn px-3 py-1.5 rounded-full font-bold bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 transition whitespace-nowrap">🎵 Music</button>
+          <button onclick="filterByTag('学校行事')" class="tag-filter-btn px-3 py-1.5 rounded-full font-bold bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 transition whitespace-nowrap">🏫 学校行事</button>
+          <button onclick="filterByTag('提出物あり')" class="tag-filter-btn px-3 py-1.5 rounded-full font-bold bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 transition whitespace-nowrap">⚠️ 提出物</button>
+        </div>
+
+        <!-- おたよりカードリスト -->
+        <div id="postsList" class="space-y-3 mt-2">
+          
+            <div class="otayori-card p-3.5 flex gap-3.5 cursor-pointer hover:border-amber-300 transition" onclick="openDetailModal('92d77224')">
+              <div class="w-16 h-20 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <img src="/uploads/25b555da-ad48-4e85-9ae7-cb138c556c13.png" class="w-full h-full object-cover" alt="プリント">
+              </div>
+              <div class="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800">📚 英語・UOI</span><span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800">🎨 アート</span><span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800">⚠️ 提出物あり</span>
+                    <span class="text-[10px] text-stone-400 font-semibold ml-auto">📅 2026/09/07</span>
+                  </div>
+                  <h3 class="text-xs font-extrabold text-stone-900 mt-1 truncate leading-tight">第 1 四半期、第 5 週のお知らせ（UOI評価タスク）</h3>
+                  <p class="text-[10px] text-stone-400 truncate">Quarter 1, week 5 (Summative Assessment)</p>
+                </div>
+                <p class="text-[11px] text-stone-600 line-clamp-2 mt-1 leading-snug">【メッセージ本文】
+9月7日(月)にUOIの総括評価を実施します。自宅での作成は不可のため、材料（靴箱、ステッカー、写真、色紙）を持参してください。
+
+【添付プリント翻訳】
+靴箱を装飾した「My Identity スーツケース」を作成し、自分らしさについてのプレゼンテーションを行います。</p>
+                <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-stone-100 text-[10px]">
+                  <div class="flex items-center gap-1.5 truncate max-w-[190px]">
+                    <span class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-bold">🎒 持ち物 5点</span>
+                    <span class="text-red-700 bg-red-50 px-1.5 py-0.5 rounded font-bold">⚠️ 締切: 2026/09/07</span>
+                  </div>
+                  <span class="text-emerald-700 font-bold flex items-center gap-0.5 flex-shrink-0">
+                    <span>詳細</span>
+                    <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+
+            <div class="otayori-card p-3.5 flex gap-3.5 cursor-pointer hover:border-amber-300 transition" onclick="openDetailModal('ded553f2')">
+              <div class="w-16 h-20 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <img src="/static/samples/no_image.svg" class="w-full h-full object-cover" alt="プリント">
+              </div>
+              <div class="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-800">🀄 中国語</span>
+                    <span class="text-[10px] text-stone-400 font-semibold ml-auto">📅 随時</span>
+                  </div>
+                  <h3 class="text-xs font-extrabold text-stone-900 mt-1 truncate leading-tight">P2 (フェーズ 2) 保護者の皆様へ（中国語レッスン・SA復習）</h3>
+                  <p class="text-[10px] text-stone-400 truncate">Dear P2 (Phase 2) Parents, (Mandarin SA Revision)</p>
+                </div>
+                <p class="text-[11px] text-stone-600 line-clamp-2 mt-1 leading-snug">P2 (フェーズ 2) の保護者の皆様、
+今週の中国語レッスンは無事に終了しました。来週もSAの評価を行いながらSAの改訂を進めていきます。ディクテーションの復習をご家庭でサポートしてください。</p>
+                <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-stone-100 text-[10px]">
+                  <div class="flex items-center gap-1.5 truncate max-w-[190px]">
+                    
+                    
+                  </div>
+                  <span class="text-emerald-700 font-bold flex items-center gap-0.5 flex-shrink-0">
+                    <span>詳細</span>
+                    <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+        </div>
+      </section>
+
+    </main>
+
+    <!-- フローティング「＋ おたよりをポスト」ボタン -->
+    <button onclick="openUploadModal()" class="fab-post-btn" title="新しい英語プリントを追加">
+      <i data-lucide="plus" class="w-8 h-8 stroke-[2.5]"></i>
+    </button>
+
+  </div>
+
+  <!-- ================= モーダル群 ================= -->
+
+  <!-- 1. アップロード・撮影モーダル -->
+  <div id="uploadModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-pop">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3 border-stone-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold">📝</div>
+          <h3 class="font-extrabold text-stone-800 text-lg">School Info に追加</h3>
+        </div>
+        <button onclick="closeModal('uploadModal')" class="p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 入力方法選択: 写真/ファイル または テキスト直接入力 -->
+      <div class="space-y-3">
+        <!-- 写真撮影 / ファイルアップロード領域 -->
+        <div id="dropZone" class="border-2 border-dashed border-stone-300 hover:border-red-400 bg-stone-50 hover:bg-red-50/30 rounded-2xl p-4 text-center transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" accept="image/*,application/pdf" class="hidden" onchange="handleFileSelected(event)">
+          <div class="flex items-center justify-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-red-100 text-red-500 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="camera" class="w-5 h-5"></i>
+            </div>
+            <div class="text-left">
+              <p class="font-bold text-xs text-stone-700">写真を撮影 / 画像・PDFを選択</p>
+              <p class="text-[10px] text-stone-400">タップしてファイルを選択</p>
+            </div>
+          </div>
+          <div id="selectedFileName" class="hidden mt-2.5 p-2 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center justify-center gap-1.5">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span id="selectedFileNameText" class="truncate max-w-[240px]"></span>
+          </div>
+        </div>
+
+        <!-- 英語テキスト直接入力エリア（常時表示） -->
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-stone-700 flex items-center gap-1">
+            <i data-lucide="type" class="w-3.5 h-3.5 text-stone-500"></i>
+            <span>英語のおたよりテキスト（貼り付け）:</span>
+          </label>
+          <textarea id="rawTextInput" rows="5" placeholder="英語のおたよりの文章やメール本文をここに貼り付け&#10;(例: UOI assessment details, Chinese homework, Art activity materials, Music concert info...)"
+                    class="w-full p-3 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400/40 font-mono leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <!-- 解析開始ボタン -->
+      <button id="startAnalyzeBtn" onclick="submitAnalyze()" class="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-sm shadow-lg shadow-red-500/30 transition flex items-center justify-center gap-2">
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <span>AIで読取 ＆ 翻訳を開始</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. AI読取・下書き確認＆編集エディタモーダル -->
+  <div id="draftModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-pop">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+      
+      <!-- ヘッダー -->
+      <div class="flex items-center justify-between border-b pb-3 border-stone-100">
+        <div>
+          <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span id="draftModalTitle">AI読取 ＆ 翻訳完了（確認・編集）</span>
+          </div>
+          <p class="text-xs text-stone-500">内容を確認・編集しておたよりを登録できます</p>
+        </div>
+        <button onclick="closeModal('draftModal')" class="p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="draftForm" onsubmit="saveDraftPost(event)" class="space-y-4">
+        
+        <!-- 画像添付・変更エリア -->
+        <div class="space-y-2">
+          <div id="draftImageContainer" class="hidden relative w-full h-40 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200 flex items-center justify-center">
+            <img id="draftImagePreview" class="w-full h-full object-contain bg-stone-50" src="" alt="おたより画像">
+            <button type="button" onclick="removeDraftImage()" class="absolute top-2 right-2 px-2.5 py-1 rounded-xl bg-black/60 hover:bg-black/80 text-white text-[10px] font-bold backdrop-blur flex items-center gap-1 transition">
+              <i data-lucide="trash-2" class="w-3 h-3"></i>
+              <span>画像を削除</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input type="file" id="draftImageFileInput" accept="image/*,application/pdf" class="hidden" onchange="handleDraftImageUpload(event)">
+            <button type="button" onclick="document.getElementById('draftImageFileInput').click()" class="py-2 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition">
+              <i data-lucide="camera" class="w-3.5 h-3.5 text-stone-600"></i>
+              <span id="draftImageBtnText">📷 写真・画像を添付 / 変更</span>
+            </button>
+            <span id="draftImageUploadingMsg" class="hidden text-xs text-amber-600 font-bold animate-pulse">アップロード中...</span>
+          </div>
+        </div>
+
+        <!-- タイトル（日本語 ＆ 英語） -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-stone-700">おたよりタイトル（日本語）</label>
+          <input type="text" id="draftTitle" required class="w-full p-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-red-400/40">
+          <input type="text" id="draftTitleEn" placeholder="Original English Title" class="w-full p-2 text-xs bg-stone-100/70 border border-stone-200 rounded-xl text-stone-500">
+        </div>
+
+        <!-- 教科・分類タグ選択 -->
+        <div class="space-y-1">
+          <label class="text-xs font-bold text-stone-700">🏷️ 教科・カテゴリタグ</label>
+          <div id="draftTagsContainer" class="flex flex-wrap gap-1.5">
+            <!-- JSでトグル式タグボタン生成 -->
+          </div>
+        </div>
+
+        <!-- ① 📱 メッセージ・メール本文の翻訳（テキスト分） -->
+        <div class="space-y-2 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/80">
+          <label class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+            <span>📱 メッセージ・メール本文の翻訳:</span>
+          </label>
+          <textarea id="draftTextTranslation" rows="4" placeholder="メッセージ・メール本文の日本語訳" class="w-full p-2.5 text-xs bg-white border border-amber-200 rounded-xl leading-relaxed focus:ring-2 focus:ring-amber-400/40"></textarea>
+          <details class="text-xs">
+            <summary class="font-bold text-amber-700/80 cursor-pointer hover:text-amber-950">🇺🇸 メッセージの英語原文を確認・編集</summary>
+            <textarea id="draftTextRaw" rows="3" placeholder="英語の原文テキスト" class="w-full mt-1.5 p-2 text-[11px] bg-white border border-stone-200 rounded-xl font-mono leading-relaxed text-stone-600"></textarea>
+          </details>
+        </div>
+
+        <!-- ② 🖼️ 添付プリント写真 ＆ 画像内の翻訳 -->
+        <div class="space-y-2 p-3.5 rounded-2xl bg-sky-50/50 border border-sky-200/80">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+              <i data-lucide="image" class="w-3.5 h-3.5 text-sky-600"></i>
+              <span>🖼️ 添付プリント写真 ＆ 画像内の翻訳:</span>
+            </label>
+          </div>
+
+          <!-- プレビュー画像 -->
+          <div id="draftImageContainer" class="hidden relative w-full h-40 rounded-2xl bg-white overflow-hidden border border-sky-200 flex items-center justify-center">
+            <img id="draftImagePreview" class="w-full h-full object-contain bg-stone-50" src="" alt="おたより画像">
+            <button type="button" onclick="removeDraftImage()" class="absolute top-2 right-2 px-2.5 py-1 rounded-xl bg-black/60 hover:bg-black/80 text-white text-[10px] font-bold backdrop-blur flex items-center gap-1 transition">
+              <i data-lucide="trash-2" class="w-3 h-3"></i>
+              <span>画像を削除</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input type="file" id="draftImageFileInput" accept="image/*,application/pdf" class="hidden" onchange="handleDraftImageUpload(event)">
+            <button type="button" onclick="document.getElementById('draftImageFileInput').click()" class="py-2 px-3 rounded-xl bg-white hover:bg-sky-100 border border-sky-200 text-sky-800 text-xs font-bold flex items-center gap-1.5 transition">
+              <i data-lucide="camera" class="w-3.5 h-3.5 text-sky-600"></i>
+              <span id="draftImageBtnText">📷 写真・画像を添付 / 変更</span>
+            </button>
+            <span id="draftImageUploadingMsg" class="hidden text-xs text-amber-600 font-bold animate-pulse">読み取り・翻訳中...</span>
+          </div>
+
+          <!-- 画像内の日本語翻訳 -->
+          <div id="draftImageTranslationArea" class="space-y-1.5 pt-1">
+            <label class="text-[11px] font-bold text-sky-800">画像内の日本語翻訳:</label>
+            <textarea id="draftImageTranslation" rows="4" placeholder="画像が添付されると、画像内の英文を自動翻訳してここに入力されます" class="w-full p-2.5 text-xs bg-white border border-sky-200 rounded-xl leading-relaxed focus:ring-2 focus:ring-sky-400/40"></textarea>
+            <details class="text-xs">
+              <summary class="font-bold text-sky-700/80 cursor-pointer hover:text-sky-950">🇺🇸 画像内から読み取った英語原文 (OCR)</summary>
+              <textarea id="draftImageRaw" rows="3" placeholder="画像内から抽出された英語テキスト" class="w-full mt-1.5 p-2 text-[11px] bg-white border border-stone-200 rounded-xl font-mono leading-relaxed text-stone-600"></textarea>
+            </details>
+          </div>
+        </div>
+
+        <!-- 📅 日時・場所（任意・折りたたみ） -->
+        <details class="text-xs border border-stone-200 rounded-2xl p-3 bg-stone-50/50" id="draftDateTimeDetails">
+          <summary class="font-bold text-stone-700 cursor-pointer hover:text-stone-900 flex items-center justify-between">
+            <span>📅 日時・場所を設定する (任意)</span>
+            <span class="text-[10px] text-stone-400 font-normal">タップして開閉</span>
+          </summary>
+          <div class="mt-3 space-y-2.5 pt-2 border-t border-stone-200/60">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] font-semibold text-stone-600">予定日</label>
+                <input type="date" id="draftDate" class="w-full p-2 text-xs bg-white border border-stone-200 rounded-xl">
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-stone-600">場所</label>
+                <input type="text" id="draftLocation" placeholder="学校 / 各教室" class="w-full p-2 text-xs bg-white border border-stone-200 rounded-xl">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] font-semibold text-stone-600">開始・集合時刻</label>
+                <input type="time" id="draftTimeStart" class="w-full p-2 text-xs bg-white border border-stone-200 rounded-xl">
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-stone-600">終了・下校時刻</label>
+                <input type="time" id="draftTimeEnd" class="w-full p-2 text-xs bg-white border border-stone-200 rounded-xl">
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- 🎒 持ち物チェックリスト（任意・折りたたみ） -->
+        <details class="text-xs border border-stone-200 rounded-2xl p-3 bg-stone-50/50" id="draftItemsDetails">
+          <summary class="font-bold text-stone-700 cursor-pointer hover:text-stone-900 flex items-center justify-between">
+            <span class="flex items-center gap-1">
+              <span>🎒 持ち物チェックリスト (任意)</span>
+              <span id="draftItemsBadge" class="hidden px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold"></span>
+            </span>
+            <span class="text-[10px] text-stone-400 font-normal">タップして開閉</span>
+          </summary>
+          <div class="mt-3 space-y-2 pt-2 border-t border-stone-200/60">
+            <div id="draftItemsContainer" class="flex flex-wrap gap-1.5 min-h-[28px] p-2 bg-white border border-stone-200 rounded-xl">
+              <span class="text-[11px] text-stone-400 self-center">持ち物なし</span>
+            </div>
+            <div class="flex gap-1.5">
+              <input type="text" id="newDraftItemInput" placeholder="持ち物を追加 (例: 靴箱, エプロン, 色紙)" class="flex-1 p-2 text-xs bg-white border border-stone-200 rounded-xl">
+              <button type="button" onclick="addDraftItem()" class="px-3 py-2 bg-stone-200 hover:bg-stone-300 rounded-xl text-xs font-bold text-stone-700">追加</button>
+            </div>
+          </div>
+        </details>
+
+        <!-- ⚠️ 提出物・締切（任意・折りたたみ） -->
+        <details class="text-xs border border-red-200 rounded-2xl p-3 bg-red-50/40" id="draftDeadlineDetails">
+          <summary class="font-bold text-red-800 cursor-pointer hover:text-red-950 flex items-center justify-between">
+            <span class="flex items-center gap-1">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-500"></i>
+              <span>提出物・同意書の締切を設定する (任意)</span>
+            </span>
+            <span class="text-[10px] text-red-400 font-normal">タップして開閉</span>
+          </summary>
+          <div class="mt-3 grid grid-cols-2 gap-2 pt-2 border-t border-red-200/60">
+            <div>
+              <span class="text-[10px] text-red-700 font-semibold">締切日</span>
+              <input type="date" id="draftDeadline" class="w-full p-2 text-xs bg-white border border-red-200 rounded-xl text-red-700 font-bold">
+            </div>
+            <div>
+              <span class="text-[10px] text-red-700 font-semibold">提出内容</span>
+              <input type="text" id="draftDeadlineDesc" placeholder="参加同意書 / ワークシート" class="w-full p-2 text-xs bg-white border border-red-200 rounded-xl">
+            </div>
+          </div>
+        </details>
+
+        <!-- 登録確定ボタン -->
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeModal('draftModal')" class="flex-1 py-3 rounded-xl bg-stone-100 text-stone-600 font-bold text-xs hover:bg-stone-200">キャンセル</button>
+          <button type="submit" class="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span id="draftSubmitBtnText">この内容でおたよりを登録</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. おたより詳細モーダル -->
+  <div id="detailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-pop">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3 border-stone-100">
+        <div class="flex items-center gap-2 flex-wrap">
+          <div id="detailBadgesContainer" class="flex gap-1"></div>
+          <span id="detailDateDisplay" class="text-xs text-stone-500 font-semibold"></span>
+        </div>
+        <div class="flex items-center gap-1">
+          <!-- 編集ボタン -->
+          <button onclick="editCurrentPost()" title="おたよりを編集" class="p-1.5 text-stone-600 hover:text-stone-900 rounded-full hover:bg-stone-100 flex items-center gap-1 text-xs font-bold px-2.5 bg-stone-100">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5 text-stone-600"></i>
+            <span>編集</span>
+          </button>
+          <button onclick="closeModal('detailModal')" class="p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- タイトル -->
+      <div>
+        <h2 id="detailTitle" class="text-lg font-black text-stone-900 leading-snug"></h2>
+        <p id="detailTitleEn" class="text-xs text-stone-500 font-medium mt-0.5"></p>
+      </div>
+
+      <!-- 行事詳細カード（日時がある場合） -->
+      <div id="detailDateTimeCard" class="hidden p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-2 text-xs">
+        <div id="detailTimeRow" class="flex items-center justify-between">
+          <span class="text-stone-500">⏰ 日時・時間:</span>
+          <span id="detailTime" class="font-bold text-stone-800"></span>
+        </div>
+        <div id="detailLocationRow" class="flex items-center justify-between">
+          <span class="text-stone-500">📍 場所:</span>
+          <span id="detailLocation" class="font-bold text-stone-800"></span>
+        </div>
+        <div id="detailDeadlineRow" class="hidden flex items-center justify-between text-red-600 font-bold border-t border-red-100 pt-2">
+          <span class="flex items-center gap-1"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> 提出締切:</span>
+          <span id="detailDeadline"></span>
+        </div>
+      </div>
+
+      <!-- 持ち物（ある場合のみ表示） -->
+      <div id="detailItemsSection" class="hidden">
+        <h4 class="text-xs font-bold text-stone-700 mb-1.5 flex items-center gap-1">
+          <i data-lucide="backpack" class="w-3.5 h-3.5 text-amber-600"></i>
+          <span>持ち物リスト</span>
+        </h4>
+        <div id="detailItems" class="flex flex-wrap gap-1.5">
+          <!-- 持ち物バッジ -->
+        </div>
+      </div>
+
+      <!-- ① 📱 メッセージ・メール本文カード -->
+      <div id="detailTextCard" class="p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/70 space-y-2">
+        <h4 class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+          <span>📱 メッセージ・メール本文の翻訳</span>
+        </h4>
+        <p id="detailTextTranslation" class="text-xs leading-relaxed text-stone-800 bg-white p-3 rounded-xl border border-amber-200/50 whitespace-pre-wrap"></p>
+        <details class="text-xs" id="detailTextRawDetails">
+          <summary class="font-bold text-amber-700 cursor-pointer hover:text-amber-950">🇺🇸 英語の原文テキストを表示</summary>
+          <div id="detailTextRaw" class="mt-1.5 p-3 rounded-xl bg-white border border-stone-200 text-stone-600 text-[11px] font-mono whitespace-pre-wrap leading-relaxed"></div>
+        </details>
+      </div>
+
+      <!-- ② 🖼️ 添付プリント写真 ＆ 画像内の翻訳カード -->
+      <div id="detailImageCard" class="hidden p-3.5 rounded-2xl bg-sky-50/50 border border-sky-200/70 space-y-2.5">
+        <h4 class="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+          <i data-lucide="image" class="w-3.5 h-3.5 text-sky-600"></i>
+          <span>🖼️ 添付プリント写真 ＆ 画像内の翻訳</span>
+        </h4>
+        <!-- 画像 -->
+        <div id="detailImageContainer" class="w-full h-44 rounded-xl bg-white overflow-hidden border border-sky-200 flex items-center justify-center">
+          <img id="detailImage" class="w-full h-full object-contain bg-stone-50" src="" alt="プリント">
+        </div>
+        <!-- 画像内翻訳 -->
+        <div id="detailImageTranslationContainer">
+          <p id="detailImageTranslation" class="text-xs leading-relaxed text-stone-800 bg-white p-3 rounded-xl border border-sky-200/50 whitespace-pre-wrap"></p>
+        </div>
+        <details class="text-xs" id="detailImageRawDetails">
+          <summary class="font-bold text-sky-700 cursor-pointer hover:text-sky-950">🇺🇸 画像から読み取った英語原文 (OCR)</summary>
+          <div id="detailImageRaw" class="mt-1.5 p-3 rounded-xl bg-white border border-stone-200 text-stone-600 text-[11px] font-mono whitespace-pre-wrap leading-relaxed"></div>
+        </details>
+      </div>
+
+      <!-- アクションボタン（Googleカレンダー登録 & LINE通知） -->
+      <div class="pt-2 grid grid-cols-2 gap-2">
+        <button id="detailGoogleCalBtn" onclick="addToGoogleCalendar()" class="py-2.5 px-3 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+          <span>Googleカレンダーに追加</span>
+        </button>
+        <button id="detailLineNotifyBtn" onclick="notifyViaLine()" class="py-2.5 px-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>LINEで家族に共有</span>
+        </button>
+      </div>
+
+      <!-- 削除ボタン -->
+      <div class="text-center pt-1">
+        <button id="detailDeleteBtn" onclick="deleteCurrentPost()" class="text-xs text-red-500 hover:text-red-700 font-medium">このおたよりを削除する</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. LINE通知シミュレーター / 設定モーダル -->
+  <div id="lineModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-pop">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-2 border-stone-100">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-[#06C755] text-white flex items-center justify-center font-bold text-xs">LINE</div>
+          <h3 class="font-extrabold text-stone-800 text-sm">LINE通知プレビュー</h3>
+        </div>
+        <button onclick="closeModal('lineModal')" class="p-1 text-stone-400 hover:text-stone-700 rounded-full">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- LINE風チャットUI -->
+      <div class="bg-[#8C9DAE] p-3 rounded-2xl space-y-3 min-h-[220px]">
+        <div class="text-center">
+          <span class="px-2 py-0.5 rounded-full bg-black/20 text-white text-[10px] font-semibold">今日</span>
+        </div>
+        <div class="flex gap-2 items-start">
+          <div class="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm flex-shrink-0 shadow">📮</div>
+          <div class="space-y-1 max-w-[80%]">
+            <span class="text-[10px] text-white/90 font-bold ml-1">おたよりポスト Bot</span>
+            <div id="linePreviewBubble" class="line-bubble-left text-xs whitespace-pre-wrap">
+              通知内容を生成中...
+            </div>
+            <span id="lineTimeDisplay" class="text-[9px] text-white/70 block ml-1">18:00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-1">
+        <!-- LINEアプリを開いて送信 -->
+        <button onclick="shareDirectToLine()" class="w-full py-3 rounded-2xl bg-[#06C755] hover:bg-[#05b34c] text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 transition active:scale-[0.98]">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.777.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967 1.739-1.907 2.572-3.843 2.572-5.992z"/></svg>
+          <span>LINEアプリを開いて送信・共有</span>
+        </button>
+        <!-- メッセージをコピー -->
+        <button onclick="copyLineMessage()" class="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span>メッセージをコピー</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 設定モーダル（Gemini APIキー・ユーザー名） -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-pop">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3 border-stone-100">
+        <h3 class="font-extrabold text-stone-800 text-base">設定</h3>
+        <button onclick="closeModal('settingsModal')" class="p-1 text-stone-400 hover:text-stone-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="font-bold text-stone-700 block mb-1">保護者のお名前</label>
+          <input type="text" id="settingUserName" class="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl">
+        </div>
+
+        <div>
+          <label class="font-bold text-stone-700 block mb-1">Google Gemini API Key (任意)</label>
+          <input type="password" id="settingApiKey" placeholder="AI Studioのキーを入力 (未設定でもデモ解析が動作)" class="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl font-mono text-xs">
+          <p class="text-[10px] text-stone-400 mt-1">※ 設定すると独自の英語プリント画像を高精度AIで自動翻訳・解析できます。</p>
+        </div>
+
+        <div>
+          <label class="font-bold text-stone-700 block mb-1">毎日のLINE通知時刻</label>
+          <input type="time" id="settingNotifyTime" value="18:00" class="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl">
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-xl bg-stone-900 text-white font-bold text-xs hover:bg-stone-800 transition">
+          設定を保存する
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript ロジック (キャッシュバスター付き) -->
+  <script src="/static/app.js?v=20260902_1405"></script>
+<script>window.__INITIAL_DATA__ = {"posts": [{"id": "92d77224", "title": "第 1 四半期、第 5 週のお知らせ（UOI評価タスク）", "title_en": "Quarter 1, week 5 (Summative Assessment)", "date": "2026-09-07", "time_start": "08:30", "time_end": "15:00", "location": "学校 / 各教室 (School Campus)", "target_child": "全校生徒・児童", "items": ["靴箱・シューズボックス (Shoe Box)", "装飾用ステッカー", "お子様の個人写真 1枚", "活動用写真", "色紙"], "items_en": ["Medium-sized shoe box", "Stickers for decoration", "One personal photo", "Other pictures", "Coloured paper"], "deadline": "2026-09-07", "deadline_description": "評価タスクの持ち物持参", "is_submitted": false, "text_translation": "第 1 四半期、第 5 週\n2026 年 9 月 1 日\n📚 **総括評価 – 第 6 週 (来週)**\n\n親愛なる保護者の皆様\n\n**UOI の総評価**は来週 **2026 年 9 月 7 日月曜日**に行われ、**学生のプレゼンテーションは 2026 年 9 月 8 日火曜日**に行われます。\n\n参考までに査定明細を添付させていただきました。\n\n⚠️ **重要:** 学生は **自宅で評価タスクを完了することはできません**。この課題は **学校内で独立して**完了する必要があります。\n\n以下のものを準備して学校までお送りください。\n📦 1. 中型シューズボックス（大人サイズでも可）\n⭐ 2. 装飾用ステッカー\n📸 3. お子様の個人写真 1枚\n🖼️ 4. お子様がアクティビティに使用したいその他の写真\n🎨 5. お子様の好みに応じて、アクティビティ用の色紙\n\n**9 月 7 日月曜日**に、すべての教材が必ず学校に届けられるようにしてください。\n\nご協力とご支援をよろしくお願いいたします。 🙏\n\nよろしくお願いします。\nサンティさん\nP2 ホームルーム", "text_raw": "Quarter 1, week 5\n1st September 2026\n📚 **SUMMATIVE ASSESSMENT – WEEK 6 (NEXT WEEK)**\n\nDear Parents,\n\nThe **Summative Assessment for UOI** will take place next week on **Monday, 7 September 2026**, and the **student presentations will take place on Tuesday, 8 September 2026**.\n\nI have attached the assessment details for your reference.\n\n⚠️ **Important:** Students are **not allowed to complete the assessment task at home**. The task must be completed **independently in school**.\n\nKindly prepare and send the following items to school:\n📦 1. Medium-sized shoe box\n⭐ 2. Stickers for decoration\n📸 3. One personal photo of your child\n🖼️ 4. Other pictures that your child would like to use for the activity\n🎨 5. Some coloured paper for the activity\n\nPlease ensure that all the materials are brought to school on **Monday, 7 September**.\n\nRegards,\nMs Santhi\nP2 Homeroom", "image_url": "/uploads/25b555da-ad48-4e85-9ae7-cb138c556c13.png", "image_translation": "評価タスクの設計\n\n【目標】\nあなたの目標は、あなたの経験、選択、責任がどのようにアイデンティティやユニークな価値観を形作っているかを示すことです。\n\n【役割】\nあなたはアイデンティティ・エクスプローラー（探求者）です。\n\n【聴衆】\nクラスメートと先生\n\n【状況・背景】\n装飾された靴箱を使用して「My Identity スーツケース」を作成し、自分らしさを表現するプレゼンテーションを行います。", "image_raw": "Assessment Task Design\nGoal: Your goal is to show how your experiences, choices, responsibilities, values and unique characteristics have shaped who you are.\nRole: You are an Identity Explorer.\nAudience: Your audience will be your classmates and teacher.\nSituation/Context: You have been asked to create an Identity Suitcase using a decorated shoebox.\nProduct: My Identity Suitcase using a decorated shoebox.\nPerformance: My Identity Suitcase Presentation", "summary": "【メッセージ本文】\n9月7日(月)にUOIの総括評価を実施します。自宅での作成は不可のため、材料（靴箱、ステッカー、写真、色紙）を持参してください。\n\n【添付プリント翻訳】\n靴箱を装飾した「My Identity スーツケース」を作成し、自分らしさについてのプレゼンテーションを行います。", "summary_en": "Quarter 1, week 5 Summative Assessment", "source_text": "Quarter 1, week 5", "source_date_raw": "2026-09-15", "tags": ["英語・UOI", "アート", "提出物あり"], "created_at": "2026-09-02T12:42:08.364557", "updated_at": "2026-09-02T13:45:00.000000"}, {"id": "ded553f2", "title": "P2 (フェーズ 2) 保護者の皆様へ（中国語レッスン・SA復習）", "title_en": "Dear P2 (Phase 2) Parents, (Mandarin SA Revision)", "date": null, "time_start": null, "time_end": null, "location": "学校 / 各教室 (School Campus)", "target_child": "全校生徒・児童", "items": [], "items_en": [], "deadline": null, "deadline_description": "", "is_submitted": false, "text_translation": "P2 (フェーズ 2) の保護者の皆様、\n\n今週の中国語レッスンは無事に終了しました。今週は、「私の理想の職業」の実践と SA (Summative Assessment) の復習に重点を置きました。生徒たちは読書活動に積極的に参加し、授業全体を通して良好な取り組みを示しました。\n\n🌟 フレンドリーなリマインダー\n来週もSAの評価を行いながらSAの改訂を進めていきます。保護者の方には、ご家庭でのお子様のSAの準備をサポートしていただきますようお願いいたします。\nSA 改訂の主な焦点は、毎週のディクテーションでカバーされる内容です。語彙、ピンイン、漢字を復習できるよう手伝ってください。\n\n中国語教師\nジェシーさん (フェーズ 2)", "text_raw": "Dear P2 (Phase 2) Parents,\n\nOur Mandarin lessons for this week have been completed successfully.", "image_url": null, "image_translation": "", "image_raw": "", "summary": "P2 (フェーズ 2) の保護者の皆様、\n今週の中国語レッスンは無事に終了しました。来週もSAの評価を行いながらSAの改訂を進めていきます。ディクテーションの復習をご家庭でサポートしてください。", "summary_en": "Dear P2 (Phase 2) Parents, Mandarin lessons revision", "source_text": "Dear P2 (Phase 2) Parents,", "source_date_raw": "2026-09-15", "tags": ["中国語"], "created_at": "2026-09-02T12:50:16.445922"}], "upcoming": [{"id": "92d77224", "title": "第 1 四半期、第 5 週のお知らせ（UOI評価タスク）", "title_en": "Quarter 1, week 5 (Summative Assessment)", "date": "2026-09-07", "time_start": "08:30", "time_end": "15:00", "location": "学校 / 各教室 (School Campus)", "target_child": "全校生徒・児童", "items": ["靴箱・シューズボックス (Shoe Box)", "装飾用ステッカー", "お子様の個人写真 1枚", "活動用写真", "色紙"], "items_en": ["Medium-sized shoe box", "Stickers for decoration", "One personal photo", "Other pictures", "Coloured paper"], "deadline": "2026-09-07", "deadline_description": "評価タスクの持ち物持参", "is_submitted": false, "text_translation": "第 1 四半期、第 5 週\n2026 年 9 月 1 日\n📚 **総括評価 – 第 6 週 (来週)**\n\n親愛なる保護者の皆様\n\n**UOI の総評価**は来週 **2026 年 9 月 7 日月曜日**に行われ、**学生のプレゼンテーションは 2026 年 9 月 8 日火曜日**に行われます。\n\n参考までに査定明細を添付させていただきました。\n\n⚠️ **重要:** 学生は **自宅で評価タスクを完了することはできません**。この課題は **学校内で独立して**完了する必要があります。\n\n以下のものを準備して学校までお送りください。\n📦 1. 中型シューズボックス（大人サイズでも可）\n⭐ 2. 装飾用ステッカー\n📸 3. お子様の個人写真 1枚\n🖼️ 4. お子様がアクティビティに使用したいその他の写真\n🎨 5. お子様の好みに応じて、アクティビティ用の色紙\n\n**9 月 7 日月曜日**に、すべての教材が必ず学校に届けられるようにしてください。\n\nご協力とご支援をよろしくお願いいたします。 🙏\n\nよろしくお願いします。\nサンティさん\nP2 ホームルーム", "text_raw": "Quarter 1, week 5\n1st September 2026\n📚 **SUMMATIVE ASSESSMENT – WEEK 6 (NEXT WEEK)**\n\nDear Parents,\n\nThe **Summative Assessment for UOI** will take place next week on **Monday, 7 September 2026**, and the **student presentations will take place on Tuesday, 8 September 2026**.\n\nI have attached the assessment details for your reference.\n\n⚠️ **Important:** Students are **not allowed to complete the assessment task at home**. The task must be completed **independently in school**.\n\nKindly prepare and send the following items to school:\n📦 1. Medium-sized shoe box\n⭐ 2. Stickers for decoration\n📸 3. One personal photo of your child\n🖼️ 4. Other pictures that your child would like to use for the activity\n🎨 5. Some coloured paper for the activity\n\nPlease ensure that all the materials are brought to school on **Monday, 7 September**.\n\nRegards,\nMs Santhi\nP2 Homeroom", "image_url": "/uploads/25b555da-ad48-4e85-9ae7-cb138c556c13.png", "image_translation": "評価タスクの設計\n\n【目標】\nあなたの目標は、あなたの経験、選択、責任がどのようにアイデンティティやユニークな価値観を形作っているかを示すことです。\n\n【役割】\nあなたはアイデンティティ・エクスプローラー（探求者）です。\n\n【聴衆】\nクラスメートと先生\n\n【状況・背景】\n装飾された靴箱を使用して「My Identity スーツケース」を作成し、自分らしさを表現するプレゼンテーションを行います。", "image_raw": "Assessment Task Design\nGoal: Your goal is to show how your experiences, choices, responsibilities, values and unique characteristics have shaped who you are.\nRole: You are an Identity Explorer.\nAudience: Your audience will be your classmates and teacher.\nSituation/Context: You have been asked to create an Identity Suitcase using a decorated shoebox.\nProduct: My Identity Suitcase using a decorated shoebox.\nPerformance: My Identity Suitcase Presentation", "summary": "【メッセージ本文】\n9月7日(月)にUOIの総括評価を実施します。自宅での作成は不可のため、材料（靴箱、ステッカー、写真、色紙）を持参してください。\n\n【添付プリント翻訳】\n靴箱を装飾した「My Identity スーツケース」を作成し、自分らしさについてのプレゼンテーションを行います。", "summary_en": "Quarter 1, week 5 Summative Assessment", "source_text": "Quarter 1, week 5", "source_date_raw": "2026-09-15", "tags": ["英語・UOI", "アート", "提出物あり"], "created_at": "2026-09-02T12:42:08.364557", "updated_at": "2026-09-02T13:45:00.000000"}], "deadlines": [{"id": "92d77224", "title": "第 1 四半期、第 5 週のお知らせ（UOI評価タスク）", "title_en": "Quarter 1, week 5 (Summative Assessment)", "date": "2026-09-07", "time_start": "08:30", "time_end": "15:00", "location": "学校 / 各教室 (School Campus)", "target_child": "全校生徒・児童", "items": ["靴箱・シューズボックス (Shoe Box)", "装飾用ステッカー", "お子様の個人写真 1枚", "活動用写真", "色紙"], "items_en": ["Medium-sized shoe box", "Stickers for decoration", "One personal photo", "Other pictures", "Coloured paper"], "deadline": "2026-09-07", "deadline_description": "評価タスクの持ち物持参", "is_submitted": false, "text_translation": "第 1 四半期、第 5 週\n2026 年 9 月 1 日\n📚 **総括評価 – 第 6 週 (来週)**\n\n親愛なる保護者の皆様\n\n**UOI の総評価**は来週 **2026 年 9 月 7 日月曜日**に行われ、**学生のプレゼンテーションは 2026 年 9 月 8 日火曜日**に行われます。\n\n参考までに査定明細を添付させていただきました。\n\n⚠️ **重要:** 学生は **自宅で評価タスクを完了することはできません**。この課題は **学校内で独立して**完了する必要があります。\n\n以下のものを準備して学校までお送りください。\n📦 1. 中型シューズボックス（大人サイズでも可）\n⭐ 2. 装飾用ステッカー\n📸 3. お子様の個人写真 1枚\n🖼️ 4. お子様がアクティビティに使用したいその他の写真\n🎨 5. お子様の好みに応じて、アクティビティ用の色紙\n\n**9 月 7 日月曜日**に、すべての教材が必ず学校に届けられるようにしてください。\n\nご協力とご支援をよろしくお願いいたします。 🙏\n\nよろしくお願いします。\nサンティさん\nP2 ホームルーム", "text_raw": "Quarter 1, week 5\n1st September 2026\n📚 **SUMMATIVE ASSESSMENT – WEEK 6 (NEXT WEEK)**\n\nDear Parents,\n\nThe **Summative Assessment for UOI** will take place next week on **Monday, 7 September 2026**, and the **student presentations will take place on Tuesday, 8 September 2026**.\n\nI have attached the assessment details for your reference.\n\n⚠️ **Important:** Students are **not allowed to complete the assessment task at home**. The task must be completed **independently in school**.\n\nKindly prepare and send the following items to school:\n📦 1. Medium-sized shoe box\n⭐ 2. Stickers for decoration\n📸 3. One personal photo of your child\n🖼️ 4. Other pictures that your child would like to use for the activity\n🎨 5. Some coloured paper for the activity\n\nPlease ensure that all the materials are brought to school on **Monday, 7 September**.\n\nRegards,\nMs Santhi\nP2 Homeroom", "image_url": "/uploads/25b555da-ad48-4e85-9ae7-cb138c556c13.png", "image_translation": "評価タスクの設計\n\n【目標】\nあなたの目標は、あなたの経験、選択、責任がどのようにアイデンティティやユニークな価値観を形作っているかを示すことです。\n\n【役割】\nあなたはアイデンティティ・エクスプローラー（探求者）です。\n\n【聴衆】\nクラスメートと先生\n\n【状況・背景】\n装飾された靴箱を使用して「My Identity スーツケース」を作成し、自分らしさを表現するプレゼンテーションを行います。", "image_raw": "Assessment Task Design\nGoal: Your goal is to show how your experiences, choices, responsibilities, values and unique characteristics have shaped who you are.\nRole: You are an Identity Explorer.\nAudience: Your audience will be your classmates and teacher.\nSituation/Context: You have been asked to create an Identity Suitcase using a decorated shoebox.\nProduct: My Identity Suitcase using a decorated shoebox.\nPerformance: My Identity Suitcase Presentation", "summary": "【メッセージ本文】\n9月7日(月)にUOIの総括評価を実施します。自宅での作成は不可のため、材料（靴箱、ステッカー、写真、色紙）を持参してください。\n\n【添付プリント翻訳】\n靴箱を装飾した「My Identity スーツケース」を作成し、自分らしさについてのプレゼンテーションを行います。", "summary_en": "Quarter 1, week 5 Summative Assessment", "source_text": "Quarter 1, week 5", "source_date_raw": "2026-09-15", "tags": ["英語・UOI", "アート", "提出物あり"], "created_at": "2026-09-02T12:42:08.364557", "updated_at": "2026-09-02T13:45:00.000000"}], "settings": {"user_name": "めぐ", "gemini_api_key": "", "line_notify_token": "", "notification_time": "18:00"}};</script>
+</body>
+</html>

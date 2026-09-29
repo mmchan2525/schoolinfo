@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>新しいおたよりを追加 - School Info</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/style.css?v=20260902_1450">
+</head>
+<body class="bg-stone-100 min-h-screen text-stone-800 antialiased flex justify-center py-0 sm:py-6">
+  <div class="w-full max-w-lg bg-white min-h-screen sm:min-h-0 sm:rounded-3xl shadow-xl flex flex-col overflow-hidden">
+    
+    <!-- ヘッダー -->
+    <header class="px-4 py-3.5 bg-white border-b border-stone-200/80 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+      <a href="/" class="flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-3.5 py-2 rounded-full transition">
+        <span>← 一覧に戻る</span>
+      </a>
+      <h2 class="font-extrabold text-sm text-stone-800 flex items-center gap-1.5">
+        <span>📝 おたよりを追加</span>
+      </h2>
+      <div class="w-16"></div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="p-5 space-y-6 flex-1 overflow-y-auto">
+
+      <!-- Step 1: 写真またはテキストの入力 -->
+      <section class="space-y-4">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-full bg-red-600 text-white font-bold text-xs flex items-center justify-center">1</div>
+          <h3 class="font-extrabold text-sm text-stone-900">英語プリントの写真 または テキスト</h3>
+        </div>
+
+        <!-- 写真アップロード / 撮影 -->
+        <div id="dropZone" class="border-2 border-dashed border-stone-300 hover:border-red-400 bg-stone-50 hover:bg-red-50/30 rounded-2xl p-5 text-center transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" accept="image/*,application/pdf" class="hidden" onchange="handleFileChange(event)">
+          <div class="flex items-center justify-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
+              📷
+            </div>
+            <div class="text-left">
+              <p class="font-bold text-xs text-stone-800">写真を撮影 / プリント画像を選択</p>
+              <p class="text-[11px] text-stone-400 mt-0.5">タップしてカメラまたはライブラリを開く</p>
+            </div>
+          </div>
+          <div id="selectedFileName" class="hidden mt-3 p-2.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
+            <span>✅ 選択中:</span>
+            <span id="selectedFileNameText" class="truncate max-w-[220px]"></span>
+          </div>
+        </div>
+
+        <!-- 英語テキスト直接入力エリア -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-stone-700 flex items-center gap-1">
+            <span>📱 英語メッセージ・メール本文（貼り付け）:</span>
+          </label>
+          <textarea id="rawTextInput" rows="4" placeholder="英語のおたよりの文章やメール本文をここに貼り付け&#10;(例: Dear Parents, Please bring shoebox for UOI assessment on Sep 7th...)"
+                    class="w-full p-3.5 text-xs bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-400 font-mono leading-relaxed"></textarea>
+        </div>
+
+        <!-- AI解析実行ボタン -->
+        <button id="analyzeBtn" onclick="executeAnalyze()" class="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white font-bold text-sm shadow-lg shadow-red-500/30 transition flex items-center justify-center gap-2">
+          <span>✨ AIで読取 ＆ 日本語翻訳を開始</span>
+        </button>
+
+        <!-- サンプル選択 -->
+        <div class="pt-2 border-t border-stone-100">
+          <p class="text-[11px] font-bold text-stone-400 mb-2">💡 または サンプルで試す:</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="applySample('field_trip')" class="p-2 bg-stone-50 hover:bg-stone-100 border border-stone-200 rounded-xl text-left text-xs font-medium text-stone-700 transition">
+              🚌 秋の水族館 遠足
+            </button>
+            <button onclick="applySample('term2')" class="p-2 bg-stone-50 hover:bg-stone-100 border border-stone-200 rounded-xl text-left text-xs font-medium text-stone-700 transition">
+              🎒 2学期始業式・持ち物
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ローディング表示 -->
+      <div id="loadingBox" class="hidden p-6 rounded-2xl bg-red-50 border border-red-200 text-center space-y-3 animate-pulse">
+        <div class="w-8 h-8 border-3 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="text-xs font-bold text-red-800">AIが英語プリントを読み取り、日本語に翻訳しています...</p>
+      </div>
+
+      <!-- Step 2: 読取・翻訳結果の確認 ＆ 登録フォーム -->
+      <form id="resultForm" onsubmit="submitPost(event)" class="hidden space-y-5 pt-4 border-t-2 border-stone-100">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">2</div>
+            <h3 class="font-extrabold text-sm text-stone-900">読取 ＆ 翻訳結果の確認・編集</h3>
+          </div>
+          <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">AI解析完了</span>
+        </div>
+
+        <!-- 添付画像プレビュー -->
+        <div id="imagePreviewBox" class="hidden p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-stone-700">🖼️ 添付された画像:</span>
+            <button type="button" onclick="removeImage()" class="text-xs text-red-500 font-bold hover:underline">画像を削除</button>
+          </div>
+          <div class="w-full h-40 bg-white rounded-xl overflow-hidden flex items-center justify-center border border-stone-200">
+            <img id="previewImageEl" src="" class="w-full h-full object-contain" alt="添付画像">
+          </div>
+        </div>
+
+        <!-- タイトル -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-stone-700 block">📌 タイトル（日本語） <span class="text-red-500">*</span></label>
+          <input type="text" id="postTitle" required placeholder="例: 第1四半期のお知らせ（UOI評価タスク）"
+                 class="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400">
+        </div>
+
+        <!-- 英語原題 -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-stone-700 block">🇺🇸 英語の原題（タイトル）</label>
+          <input type="text" id="postTitleEn" placeholder="例: Quarter 1, week 5 (Summative Assessment)"
+                 class="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-600 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+        </div>
+
+        <!-- ① 📱 メッセージ・メール本文翻訳 -->
+        <div class="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-2">
+          <label class="text-xs font-bold text-amber-900 flex items-center gap-1">
+            <span>📱 メッセージ・メール本文の翻訳（日本語）</span>
+          </label>
+          <textarea id="postTextTranslation" rows="4" placeholder="メール本文や連絡事項の日本語訳"
+                    class="w-full p-3 text-xs bg-white border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 leading-relaxed"></textarea>
+          
+          <details class="text-xs pt-1">
+            <summary class="font-bold text-amber-800 cursor-pointer">🇺🇸 メッセージの英語原文</summary>
+            <textarea id="postTextRaw" rows="3" placeholder="英語の本文原文"
+                      class="mt-1.5 w-full p-2.5 text-[11px] bg-white border border-stone-200 rounded-xl font-mono text-stone-600"></textarea>
+          </details>
+        </div>
+
+        <!-- ② 🖼️ 添付画像の翻訳 -->
+        <div id="imageTranslationBox" class="p-3.5 rounded-2xl bg-sky-50/60 border border-sky-200/80 space-y-2">
+          <label class="text-xs font-bold text-sky-900 flex items-center gap-1">
+            <span>🖼️ 添付プリント画像内の翻訳（日本語）</span>
+          </label>
+          <textarea id="postImageTranslation" rows="4" placeholder="プリント画像内に書かれている内容の日本語訳"
+                    class="w-full p-3 text-xs bg-white border border-sky-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-400 leading-relaxed"></textarea>
+          
+          <details class="text-xs pt-1">
+            <summary class="font-bold text-sky-800 cursor-pointer">🇺🇸 画像から読み取った英語原文 (OCR)</summary>
+            <textarea id="postImageRaw" rows="3" placeholder="画像内OCR英語テキスト"
+                      class="mt-1.5 w-full p-2.5 text-[11px] bg-white border border-stone-200 rounded-xl font-mono text-stone-600"></textarea>
+          </details>
+        </div>
+
+        <!-- 日時・場所・締切 -->
+        <div class="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+          <h4 class="text-xs font-bold text-stone-800">📅 日程 ＆ 場所</h4>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-stone-600 block mb-1">日付</label>
+              <input type="date" id="postDate" class="w-full p-2 bg-white border border-stone-200 rounded-xl text-xs">
+            </div>
+            <div>
+              <label class="text-[11px] text-stone-600 block mb-1">開始時間</label>
+              <input type="time" id="postTimeStart" class="w-full p-2 bg-white border border-stone-200 rounded-xl text-xs">
+            </div>
+          </div>
+          <div>
+            <label class="text-[11px] text-stone-600 block mb-1">場所</label>
+            <input type="text" id="postLocation" placeholder="学校 / 各教室など" class="w-full p-2 bg-white border border-stone-200 rounded-xl text-xs">
+          </div>
+          <div class="grid grid-cols-2 gap-2 border-t border-stone-200/60 pt-2">
+            <div>
+              <label class="text-[11px] text-red-600 font-bold block mb-1">⚠️ 提出締切日</label>
+              <input type="date" id="postDeadline" class="w-full p-2 bg-white border border-red-200 rounded-xl text-xs">
+            </div>
+            <div>
+              <label class="text-[11px] text-stone-600 block mb-1">提出物の内容</label>
+              <input type="text" id="postDeadlineDesc" placeholder="靴箱・写真など" class="w-full p-2 bg-white border border-stone-200 rounded-xl text-xs">
+            </div>
+          </div>
+        </div>
+
+        <!-- 持ち物リスト -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-stone-700 block">🎒 持ち物・持参するもの（カンマ区切り）</label>
+          <input type="text" id="postItems" placeholder="靴箱, ステッカー, 写真, はさみ"
+                 class="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400">
+        </div>
+
+        <!-- タグ選択 -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-stone-700 block">🏷️ タグ</label>
+          <div id="tagContainer" class="flex flex-wrap gap-1.5 pt-1">
+            <!-- JSでトグルボタン生成 -->
+          </div>
+        </div>
+
+        <!-- 登録実行ボタン -->
+        <div class="pt-3 pb-8">
+          <button type="submit" id="savePostBtn" class="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-sm shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2">
+            <span>🚀 この内容でおたよりを登録する</span>
+          </button>
+        </div>
+
+      </form>
+
+    </main>
+  </div>
+
+  <script>
+    let currentUploadedImageUrl = null;
+    let selectedTags = ['英語・UOI'];
+    const ALL_TAGS = ['英語・UOI', '中国語', 'アート', 'Music', '学校行事', '提出物あり'];
+
+    function renderTags() {
+      const container = document.getElementById('tagContainer');
+      container.innerHTML = ALL_TAGS.map(t => {
+        const isSel = selectedTags.includes(t);
+        const bg = isSel ? 'bg-stone-800 text-white font-bold' : 'bg-stone-100 text-stone-600 hover:bg-stone-200';
+        return `<button type="button" onclick="toggleTag('${t}')" class="px-3 py-1.5 rounded-full text-xs transition ${bg}">${t}</button>`;
+      }).join('');
+    }
+
+    function toggleTag(t) {
+      if (selectedTags.includes(t)) {
+        selectedTags = selectedTags.filter(x => x !== t);
+      } else {
+        selectedTags.push(t);
+      }
+      renderTags();
+    }
+
+    let selectedFile = null;
+    function handleFileChange(e) {
+      const file = e.target.files[0];
+      if (file) {
+        selectedFile = file;
+        document.getElementById('selectedFileNameText').innerText = file.name;
+        document.getElementById('selectedFileName').classList.remove('hidden');
+      }
+    }
+
+    function removeImage() {
+      currentUploadedImageUrl = null;
+      document.getElementById('imagePreviewBox').classList.add('hidden');
+    }
+
+    async function applySample(type) {
+      document.getElementById('loadingBox').classList.remove('hidden');
+      document.getElementById('resultForm').classList.add('hidden');
+
+      let sampleText = "";
+      let sampleSvg = `/static/samples/${type}.svg`;
+
+      if (type === 'field_trip') {
+        sampleText = "Autumn Field Trip Announcement: Friday, September 12th to Port Aquarium. Departure: 8:30 AM, Return: 3:00 PM. Please bring packed lunch, water bottle, leisure sheet, backpack, raincoat. Return signed permission slip by Thursday, September 4th.";
+      } else if (type === 'term2') {
+        sampleText = "Term 2 Opening Ceremony & Welcome Back: Monday, August 25th (8:15 AM - 11:30 AM, Early Dismissal). Please bring indoor clean shoes, emergency disaster hood, completed summer homework, and health check card.";
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('text', sampleText);
+
+        const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+        document.getElementById('loadingBox').classList.add('hidden');
+
+        if (data.draft) {
+          data.draft.image_url = sampleSvg;
+          populateForm(data.draft);
+        }
+      } catch (err) {
+        document.getElementById('loadingBox').classList.add('hidden');
+        alert('サンプル解析エラー: ' + err.message);
+      }
+    }
+
+    async function executeAnalyze() {
+      const textVal = document.getElementById('rawTextInput').value.trim();
+      if (!selectedFile && !textVal) {
+        alert('写真を選択するか、英語テキストを貼り付けてください。');
+        return;
+      }
+
+      document.getElementById('loadingBox').classList.remove('hidden');
+      document.getElementById('resultForm').classList.add('hidden');
+
+      try {
+        const formData = new FormData();
+        if (selectedFile) formData.append('file', selectedFile);
+        if (textVal) formData.append('text', textVal);
+
+        const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+        document.getElementById('loadingBox').classList.add('hidden');
+
+        if (data.draft) {
+          populateForm(data.draft);
+        } else {
+          alert('解析結果が取得できませんでした。');
+        }
+      } catch (err) {
+        document.getElementById('loadingBox').classList.add('hidden');
+        alert('AI解析エラー: ' + err.message);
+      }
+    }
+
+    function populateForm(draft) {
+      document.getElementById('postTitle').value = draft.title || '';
+      document.getElementById('postTitleEn').value = draft.title_en || '';
+      document.getElementById('postTextTranslation').value = draft.text_translation || draft.summary || '';
+      document.getElementById('postTextRaw').value = draft.text_raw || draft.source_text || '';
+      document.getElementById('postImageTranslation').value = draft.image_translation || '';
+      document.getElementById('postImageRaw').value = draft.image_raw || '';
+      document.getElementById('postDate').value = draft.date || '';
+      document.getElementById('postTimeStart').value = draft.time_start || '';
+      document.getElementById('postLocation').value = draft.location || '';
+      document.getElementById('postDeadline').value = draft.deadline || '';
+      document.getElementById('postDeadlineDesc').value = draft.deadline_description || '';
+      document.getElementById('postItems').value = (draft.items || []).join(', ');
+
+      if (draft.tags && draft.tags.length > 0) {
+        selectedTags = draft.tags;
+      }
+      renderTags();
+
+      if (draft.image_url) {
+        currentUploadedImageUrl = draft.image_url;
+        document.getElementById('previewImageEl').src = draft.image_url;
+        document.getElementById('imagePreviewBox').classList.remove('hidden');
+      }
+
+      document.getElementById('resultForm').classList.remove('hidden');
+      document.getElementById('resultForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function submitPost(e) {
+      e.preventDefault();
+      const title = document.getElementById('postTitle').value.trim();
+      if (!title) {
+        alert('タイトルを入力してください');
+        return;
+      }
+
+      const itemsStr = document.getElementById('postItems').value;
+      const itemsArr = itemsStr ? itemsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      const postData = {
+        title: title,
+        title_en: document.getElementById('postTitleEn').value.trim() || null,
+        text_translation: document.getElementById('postTextTranslation').value.trim() || null,
+        text_raw: document.getElementById('postTextRaw').value.trim() || null,
+        image_translation: document.getElementById('postImageTranslation').value.trim() || null,
+        image_raw: document.getElementById('postImageRaw').value.trim() || null,
+        summary: document.getElementById('postTextTranslation').value.trim() || document.getElementById('postImageTranslation').value.trim() || title,
+        date: document.getElementById('postDate').value || null,
+        time_start: document.getElementById('postTimeStart').value || null,
+        location: document.getElementById('postLocation').value.trim() || null,
+        deadline: document.getElementById('postDeadline').value || null,
+        deadline_description: document.getElementById('postDeadlineDesc').value.trim() || null,
+        items: itemsArr,
+        tags: selectedTags,
+        image_url: currentUploadedImageUrl
+      };
+
+      try {
+        const btn = document.getElementById('savePostBtn');
+        btn.disabled = true;
+        btn.innerText = '登録中...';
+
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(postData)
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json();
+
+        if (result.post && result.post.id) {
+          // 登録された詳細ページへ直接遷移！
+          window.location.href = `/post/${result.post.id}`;
+        } else {
+          window.location.href = '/';
+        }
+      } catch (err) {
+        alert('登録エラー: ' + err.message);
+        document.getElementById('savePostBtn').disabled = false;
+        document.getElementById('savePostBtn').innerText = '🚀 この内容でおたよりを登録する';
+      }
+    }
+
+    // 初期化
+    renderTags();
+  </script>
+</body>
+</html>

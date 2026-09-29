@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <rect width="400" height="400" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+  <circle cx="200" cy="170" r="56" fill="#EEF2F6"/>
+  
+  <!-- Document / Text Icon -->
+  <path d="M175 135 H215 L235 155 V205 H175 Z" fill="#CBD5E1"/>
+  <path d="M215 135 V155 H235" fill="#94A3B8"/>
+  <line x1="185" y1="170" x2="215" y2="170" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <line x1="185" y1="182" x2="225" y2="182" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <line x1="185" y1="194" x2="210" y2="194" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Text -->
+  <text x="200" y="260" font-family="'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="bold" fill="#64748B" text-anchor="middle">NO IMAGE</text>
+  <text x="200" y="285" font-family="'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="500" fill="#94A3B8" text-anchor="middle">テキストのみのおたより</text>
+</svg>
