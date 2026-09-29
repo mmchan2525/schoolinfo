@@ -439,8 +439,9 @@ function handleRouting() {
   const detailView = document.getElementById('detailView');
   const newView = document.getElementById('newView');
   const editView = document.getElementById('editView');
+  const settingsView = document.getElementById('settingsView');
 
-  [homeView, detailView, newView, editView].forEach(el => {
+  [homeView, detailView, newView, editView, settingsView].forEach(el => {
     if (el) el.classList.add('hidden');
   });
 
@@ -460,6 +461,9 @@ function handleRouting() {
     const postId = hash.replace('#/edit/', '');
     if (editView) editView.classList.remove('hidden');
     renderEditPage(postId);
+  } else if (hash === '#/settings') {
+    if (settingsView) settingsView.classList.remove('hidden');
+    renderSettingsPage();
   } else {
     window.location.hash = '#/';
   }
@@ -2328,12 +2332,13 @@ function saveSettings(e) {
     notification_time: "18:00"
   };
   DB.saveSettings(settings);
-  closeSettingsModal();
-  document.getElementById('userNameDisplay').innerText = settings.user_name;
+  const userDisplay = document.getElementById('userNameDisplay');
+  if (userDisplay) userDisplay.innerText = settings.user_name;
   updateAiEngineStatusBanner();
   renderChildTabs();
   renderHomeTagFilters();
   alert('⚙️ 設定を保存しました！');
+  window.location.hash = '#/';
 }
 
 // バックアップ
@@ -2359,8 +2364,7 @@ function importBackupData(event) {
       if (data.posts) DB.savePosts(data.posts);
       if (data.settings) DB.saveSettings(data.settings);
       alert('✅ データを復元しました！');
-      closeSettingsModal();
-      handleRouting();
+      window.location.hash = "#/";
     } catch(err) {
       alert('復元エラー: ' + err.message);
     }
@@ -2384,6 +2388,5 @@ function resetAllPostsData() {
   _postsCache = [];
   DB.savePosts([]);
   alert('🧹 すべてのおたよりデータを削除しました。');
-  closeSettingsModal();
-  handleRouting();
+  window.location.hash = "#/";
 }
