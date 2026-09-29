@@ -1,26 +1,29 @@
-// --- 設定モーダル ＆ タグ管理 ---
+// --- 設定モーダル ＆ タグ管理（すべてのタグの追加・削除が可能） ---
 function renderSettingsTags() {
   const container = document.getElementById('settingsTagsList');
   if (!container) return;
-  const customTags = DB.getCustomTags();
+  const allTags = DB.getAllTags();
 
-  let html = DEFAULT_TAGS.map(t => {
-    return `<span class="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold flex items-center gap-1 border border-stone-200">
-      <span>${escapeHtml(t)}</span>
-      <span class="text-[9px] bg-stone-200 text-stone-600 px-1 rounded">初期</span>
-    </span>`;
-  }).join('');
+  if (allTags.length === 0) {
+    container.innerHTML = `<span class="text-stone-400 text-xs py-1">登録されているタグはありません</span>`;
+    return;
+  }
 
-  customTags.forEach(t => {
-    html += `
-      <span class="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-900 text-xs font-bold flex items-center gap-1.5 border border-amber-200 shadow-2xs">
-        <span>🏷️ ${escapeHtml(t)}</span>
-        <button type="button" onclick="deleteCustomTagFromSettings('${escapeHtml(t)}')" class="text-stone-400 hover:text-rose-600 font-bold ml-0.5" title="削除">✕</button>
+  container.innerHTML = allTags.map(t => {
+    let badgeBg = 'bg-stone-100 text-stone-800 border-stone-200';
+    let icon = '🏷️';
+    if (t === 'English') { badgeBg = 'bg-blue-50 text-blue-800 border-blue-200'; icon = '📚'; }
+    else if (t === 'Math') { badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-200'; icon = '🔢'; }
+    else if (t === 'Mandarin') { badgeBg = 'bg-rose-50 text-rose-800 border-rose-200'; icon = '🀄'; }
+    else if (t === 'event') { badgeBg = 'bg-purple-50 text-purple-800 border-purple-200'; icon = '🏫'; }
+
+    return `
+      <span class="px-2.5 py-1 rounded-xl ${badgeBg} text-xs font-bold flex items-center gap-1.5 border shadow-2xs">
+        <span>${icon} ${escapeHtml(t)}</span>
+        <button type="button" onclick="deleteTagFromSettings('${escapeHtml(t)}')" class="text-stone-400 hover:text-rose-600 font-bold ml-0.5 transition" title="「${escapeHtml(t)}」を削除">✕</button>
       </span>
     `;
-  });
-
-  container.innerHTML = html;
+  }).join('');
 }
 
 function addCustomTagFromSettings() {
@@ -31,15 +34,16 @@ function addCustomTagFromSettings() {
     if (input) input.focus();
     return;
   }
-  DB.addCustomTag(tag);
+  DB.addTag(tag);
   if (input) input.value = '';
   renderSettingsTags();
   renderHomeTagFilters();
+  renderHomePage();
 }
 
-function deleteCustomTagFromSettings(tag) {
+function deleteTagFromSettings(tag) {
   if (!confirm(`タグ「${tag}」を削除しますか？`)) return;
-  DB.deleteCustomTag(tag);
+  DB.deleteTag(tag);
   if (activeTag === tag) {
     activeTag = 'all';
   }
@@ -47,6 +51,11 @@ function deleteCustomTagFromSettings(tag) {
   renderHomeTagFilters();
   renderHomePage();
 }
+
+function deleteCustomTagFromSettings(tag) {
+  deleteTagFromSettings(tag);
+}
+
 // --- ホーム画面 タグフィルター描画 ---
 function renderHomeTagFilters() {
   const container = document.getElementById('homeTagFilterContainer');
@@ -314,39 +323,47 @@ const DB = {
     return posts.length < initialLen;
   },
 
-  getCustomTags: function() {
-    const s = this.getSettings();
-    return Array.isArray(s.custom_tags) ? s.custom_tags : [];
-  },
-
   getAllTags: function() {
-    const custom = this.getCustomTags();
-    const list = [...DEFAULT_TAGS];
-    for (const t of custom) {
-      if (!list.includes(t)) list.push(t);
+    const s = this.getSettings();
+    if (Array.isArray(s.tags) && s.tags.length > 0) {
+      return s.tags;
     }
-    return list;
+    // 初期デフォルトタグ
+    return ['English', 'Math', 'Mandarin', 'event', 'その他'];
   },
 
-  addCustomTag: function(tag) {
+  getCustomTags: function() {
+    return this.getAllTags();
+  },
+
+  addTag: function(tag) {
     const trimmed = (tag || '').trim();
     if (!trimmed) return this.getAllTags();
     const settings = this.getSettings();
-    if (!Array.isArray(settings.custom_tags)) settings.custom_tags = [];
-    if (!DEFAULT_TAGS.includes(trimmed) && !settings.custom_tags.includes(trimmed)) {
-      settings.custom_tags.push(trimmed);
+    if (!Array.isArray(settings.tags)) settings.tags = this.getAllTags();
+    if (!settings.tags.includes(trimmed)) {
+      settings.tags.push(trimmed);
       this.saveSettings(settings);
     }
-    return this.getAllTags();
+    return settings.tags;
+  },
+
+  addCustomTag: function(tag) {
+    return this.addTag(tag);
+  },
+
+  deleteTag: function(tag) {
+    const settings = this.getSettings();
+    const current = this.getAllTags();
+    settings.tags = current.filter(t => t !== tag);
+    this.saveSettings(settings);
+    return settings.tags;
   },
 
   deleteCustomTag: function(tag) {
-    const settings = this.getSettings();
-    if (!Array.isArray(settings.custom_tags)) return this.getAllTags();
-    settings.custom_tags = settings.custom_tags.filter(t => t !== tag);
-    this.saveSettings(settings);
-    return this.getAllTags();
+    return this.deleteTag(tag);
   },
+
   getChildren: function() {
     const s = this.getSettings();
     return Array.isArray(s.children) ? s.children : [];
@@ -386,7 +403,15 @@ const DB = {
       if (data) {
         const parsed = JSON.parse(data);
         if (!Array.isArray(parsed.children)) parsed.children = [];
-        if (!Array.isArray(parsed.custom_tags)) parsed.custom_tags = [];
+        if (!Array.isArray(parsed.tags)) {
+          if (Array.isArray(parsed.custom_tags) && parsed.custom_tags.length > 0) {
+            const merged = ['English', 'Math', 'Mandarin', 'event', 'その他'];
+            for (const ct of parsed.custom_tags) { if (!merged.includes(ct)) merged.push(ct); }
+            parsed.tags = merged;
+          } else {
+            parsed.tags = ['English', 'Math', 'Mandarin', 'event', 'その他'];
+          }
+        }
         return parsed;
       }
     } catch(e) {}
@@ -395,7 +420,7 @@ const DB = {
       gemini_api_key: "",
       line_notify_token: "",
       notification_time: "18:00",
-      children: [], custom_tags: []
+      children: [], tags: ['English', 'Math', 'Mandarin', 'event', 'その他']
     };
   },
 
@@ -1987,7 +2012,7 @@ function promptAddNewTag(context) {
   const tagName = prompt('追加したい新しいタグ名を入力してください\n(例: Science, 水泳, PTA, 提出物あり)');
   if (!tagName || !tagName.trim()) return;
   const trimmed = tagName.trim();
-  DB.addCustomTag(trimmed);
+  DB.addTag(trimmed);
 
   if (context === 'new') {
     if (!newSelectedTags.includes(trimmed)) newSelectedTags.push(trimmed);
@@ -2083,13 +2108,13 @@ function setChildGenderForm(gender) {
   if (btnBoy && btnGirl) {
     if (gender === '👦') {
       btnBoy.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border-2 border-sky-600 bg-sky-500 text-white font-black shadow-md ring-2 ring-sky-200 text-xs transition scale-[1.02] cursor-pointer';
-      btnBoy.innerHTML = '<span>👦 男の子</span> <span class="bg-white/25 px-1.5 py-0.5 rounded-full text-[9px] font-bold">✓ 選択中</span>';
+      btnBoy.innerHTML = '<span>👦 男の子</span> <span class="text-xs font-black ml-0.5">✓</span>';
 
       btnGirl.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-stone-200 bg-stone-100 text-stone-500 font-medium hover:bg-stone-200 text-xs transition cursor-pointer opacity-70';
       btnGirl.innerHTML = '<span>👧 女の子</span>';
     } else {
       btnGirl.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border-2 border-rose-600 bg-rose-500 text-white font-black shadow-md ring-2 ring-rose-200 text-xs transition scale-[1.02] cursor-pointer';
-      btnGirl.innerHTML = '<span>👧 女の子</span> <span class="bg-white/25 px-1.5 py-0.5 rounded-full text-[9px] font-bold">✓ 選択中</span>';
+      btnGirl.innerHTML = '<span>👧 女の子</span> <span class="text-xs font-black ml-0.5">✓</span>';
 
       btnBoy.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-stone-200 bg-stone-100 text-stone-500 font-medium hover:bg-stone-200 text-xs transition cursor-pointer opacity-70';
       btnBoy.innerHTML = '<span>👦 男の子</span>';
