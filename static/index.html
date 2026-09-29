@@ -11,7 +11,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="./style.css?v=20260930_v20">
+  <link rel="stylesheet" href="./style.css?v=20260930_v22">
   <link rel="manifest" href="./manifest.json">
   
   <!-- iOS Safari PWA / WebClip Settings -->
@@ -57,6 +57,19 @@
 
       <!-- メインスクロールエリア -->
       <main class="flex-1 px-3.5 py-4 space-y-4 pb-24">
+
+                <!-- 👦 お子さん切り替えタブ -->
+        <section id="childFilterSection" class="space-y-1.5">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[11px] font-black text-stone-600 flex items-center gap-1">
+              <span>👶 お子さん別表示</span>
+            </span>
+            <button type="button" onclick="openSettingsModal('children')" class="text-[10px] font-bold text-rose-500 hover:underline flex items-center gap-0.5">
+              <span>⚙️ お子さん設定</span>
+            </button>
+          </div>
+          <div id="childTabsContainer" class="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar text-xs"></div>
+        </section>
 
         <!-- 📅 直近の予定（予定・持ち物） -->
         <section id="upcomingEventsSection" class="space-y-2">
@@ -179,6 +192,16 @@
           </div>
 
           <!-- タイトル -->
+                    <!-- 対象のお子さん選択 -->
+          <div class="space-y-1.5 p-3 rounded-2xl bg-stone-50 border border-stone-200">
+            <label class="text-[11px] font-bold text-stone-700 flex items-center justify-between">
+              <span class="flex items-center gap-1">👶 <span>対象のお子さん</span></span>
+              <span class="text-[10px] text-stone-400 font-normal">※指定しない場合は全員共通</span>
+            </label>
+            <div id="newChildSelectorContainer" class="flex flex-wrap gap-1.5 pt-0.5"></div>
+            <input type="hidden" id="newPostChildId" value="all">
+          </div>
+
           <div class="space-y-1">
             <label class="text-[11px] font-bold text-stone-700 block">📌 タイトル（日本語） <span class="text-rose-500">*</span></label>
             <input type="text" id="newPostTitle" required placeholder="例: 第1四半期のお知らせ（UOI評価タスク）"
@@ -297,6 +320,18 @@
           <input type="hidden" id="editPostId">
 
           <!-- 添付写真エリア -->
+
+          <!-- 対象のお子さん選択 -->
+          <div class="space-y-1.5 p-3 rounded-2xl bg-stone-50 border border-stone-200">
+            <label class="text-[11px] font-bold text-stone-700 flex items-center justify-between">
+              <span class="flex items-center gap-1">👶 <span>対象のお子さん</span></span>
+              <span class="text-[10px] text-stone-400 font-normal">※指定しない場合は全員共通</span>
+            </label>
+            <div id="editChildSelectorContainer" class="flex flex-wrap gap-1.5 pt-0.5"></div>
+            <input type="hidden" id="editPostChildId" value="all">
+          </div>
+
+
           <div id="editImageSection" class="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
             <div class="flex items-center justify-between">
               <label class="text-[11px] font-bold text-stone-800">🖼️ 添付写真</label>
@@ -316,6 +351,16 @@
           </div>
 
           <!-- タイトル -->
+                    <!-- 対象のお子さん選択 -->
+          <div class="space-y-1.5 p-3 rounded-2xl bg-stone-50 border border-stone-200">
+            <label class="text-[11px] font-bold text-stone-700 flex items-center justify-between">
+              <span class="flex items-center gap-1">👶 <span>対象のお子さん</span></span>
+              <span class="text-[10px] text-stone-400 font-normal">※指定しない場合は全員共通</span>
+            </label>
+            <div id="newChildSelectorContainer" class="flex flex-wrap gap-1.5 pt-0.5"></div>
+            <input type="hidden" id="newPostChildId" value="all">
+          </div>
+
           <div class="space-y-1">
             <label class="text-[11px] font-bold text-stone-700 block">📌 タイトル（日本語） <span class="text-rose-500">*</span></label>
             <input type="text" id="editPostTitle" required
@@ -412,6 +457,58 @@
             <input type="text" id="settingUserName" value="ゲスト" class="w-full p-2 bg-stone-50 border border-stone-200 rounded-xl font-bold text-xs">
           </div>
 
+                    <!-- 👶 お子さんの登録・管理 -->
+          <div class="pt-2 border-t border-stone-100 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="font-bold text-stone-800 text-[11px] flex items-center gap-1">
+                <span>👶 お子さんの登録・管理</span>
+              </label>
+              <span class="text-[10px] text-stone-400 font-medium">（兄弟・姉妹を登録）</span>
+            </div>
+
+            <!-- お子さん一覧 -->
+            <div id="settingsChildrenList" class="space-y-1.5 max-h-36 overflow-y-auto pr-0.5"></div>
+
+            <!-- 新規お子さん追加ボックス -->
+            <div class="p-2.5 rounded-xl bg-stone-50 border border-stone-200 space-y-2">
+              <p class="text-[10px] font-bold text-stone-600">＋ 新しいお子さんを追加</p>
+              <div class="grid grid-cols-12 gap-1.5">
+                <div class="col-span-3">
+                  <select id="newChildIcon" class="w-full p-1.5 bg-white border border-stone-200 rounded-lg text-xs font-bold">
+                    <option value="👦">👦 男</option>
+                    <option value="👧">👧 女</option>
+                    <option value="👶">👶 赤</option>
+                    <option value="🧑">🧑 子</option>
+                    <option value="🎒">🎒 生</option>
+                    <option value="🌟">🌟 星</option>
+                    <option value="⚽">⚽ 球</option>
+                  </select>
+                </div>
+                <div class="col-span-5">
+                  <input type="text" id="newChildName" placeholder="名前(例:太郎)" class="w-full p-1.5 bg-white border border-stone-200 rounded-lg text-xs font-bold">
+                </div>
+                <div class="col-span-4">
+                  <input type="text" id="newChildGrade" placeholder="学年(G3,K2)" class="w-full p-1.5 bg-white border border-stone-200 rounded-lg text-xs font-medium">
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2 pt-0.5">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-stone-500 font-bold">色:</span>
+                  <select id="newChildColor" class="p-1 bg-white border border-stone-200 rounded-lg text-[10px] font-bold">
+                    <option value="blue">🔵 青 (Blue)</option>
+                    <option value="pink">🌸 ピンク (Pink)</option>
+                    <option value="emerald">🍀 緑 (Green)</option>
+                    <option value="amber">🍊 オレンジ (Orange)</option>
+                    <option value="purple">💜 紫 (Purple)</option>
+                  </select>
+                </div>
+                <button type="button" onclick="addNewChildFromSettings()" class="px-3 py-1 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white rounded-lg text-[11px] font-bold shadow-xs transition">
+                  ＋ 追加
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label class="font-bold text-stone-800 block mb-0.5 text-[11px]">Gemini APIキー（無料・画像OCR用）</label>
             <input type="password" id="settingApiKey" placeholder="AIzaSy... (任意)" class="w-full p-2 bg-stone-50 border border-stone-200 rounded-xl font-mono text-[10px]">
@@ -445,6 +542,6 @@
 
   </div>
 
-  <script src="./app.js?v=20260930_v20"></script>
+  <script src="./app.js?v=20260930_v22"></script>
 </body>
 </html>

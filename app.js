@@ -1,3 +1,41 @@
+// 👶 お子さんカラー ＆ バッジ定義
+const CHILD_COLOR_MAP = {
+  blue: {
+    badge: 'bg-sky-50 text-sky-700 border-sky-200 border',
+    tabActive: 'bg-sky-600 text-white shadow-xs',
+    pillActive: 'bg-sky-600 text-white border-sky-600'
+  },
+  pink: {
+    badge: 'bg-rose-50 text-rose-700 border-rose-200 border',
+    tabActive: 'bg-rose-600 text-white shadow-xs',
+    pillActive: 'bg-rose-600 text-white border-rose-600'
+  },
+  emerald: {
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200 border',
+    tabActive: 'bg-emerald-600 text-white shadow-xs',
+    pillActive: 'bg-emerald-600 text-white border-emerald-600'
+  },
+  amber: {
+    badge: 'bg-amber-50 text-amber-700 border-amber-200 border',
+    tabActive: 'bg-amber-600 text-white shadow-xs',
+    pillActive: 'bg-amber-600 text-white border-amber-600'
+  },
+  purple: {
+    badge: 'bg-purple-50 text-purple-700 border-purple-200 border',
+    tabActive: 'bg-purple-600 text-white shadow-xs',
+    pillActive: 'bg-purple-600 text-white border-purple-600'
+  }
+};
+
+function getChildBadgeHtml(childId) {
+  if (!childId || childId === 'all') return '';
+  const child = DB.getChildById(childId);
+  if (!child) return '';
+  const theme = CHILD_COLOR_MAP[child.color] || CHILD_COLOR_MAP.blue;
+  const gradeStr = child.grade ? ` (${escapeHtml(child.grade)})` : '';
+  return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${theme.badge} inline-flex items-center gap-1 flex-shrink-0">${child.icon || '👶'} ${escapeHtml(child.name)}${gradeStr}</span>`;
+}
+
 // 🏷️ タグバッジHTML生成 ＆ 正規化（English, Math, Mandarin, event, その他）
 function getTagBadgeHtml(t) {
   let color = 'bg-stone-100 text-stone-700 border border-stone-200', icon = '🏷️';
@@ -165,16 +203,54 @@ const DB = {
     return posts.length < initialLen;
   },
 
+  getChildren: function() {
+    const s = this.getSettings();
+    return Array.isArray(s.children) ? s.children : [];
+  },
+
+  getChildById: function(childId) {
+    const children = this.getChildren();
+    return children.find(c => String(c.id) === String(childId)) || null;
+  },
+
+  saveChild: function(childData) {
+    const settings = this.getSettings();
+    if (!Array.isArray(settings.children)) settings.children = [];
+    if (!childData.id) {
+      childData.id = 'c_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+    }
+    const idx = settings.children.findIndex(c => String(c.id) === String(childData.id));
+    if (idx !== -1) {
+      settings.children[idx] = { ...settings.children[idx], ...childData };
+    } else {
+      settings.children.push(childData);
+    }
+    this.saveSettings(settings);
+    return childData;
+  },
+
+  deleteChild: function(childId) {
+    const settings = this.getSettings();
+    if (!Array.isArray(settings.children)) return false;
+    settings.children = settings.children.filter(c => String(c.id) !== String(childId));
+    this.saveSettings(settings);
+    return true;
+  },
   getSettings: function() {
     try {
       const data = localStorage.getItem('otayori_settings_v1');
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (!Array.isArray(parsed.children)) parsed.children = [];
+        return parsed;
+      }
     } catch(e) {}
     return {
       user_name: "ゲスト",
       gemini_api_key: "",
       line_notify_token: "",
-      notification_time: "18:00"
+      notification_time: "18:00",
+      children: []
     };
   },
 
@@ -228,18 +304,68 @@ document.addEventListener('DOMContentLoaded', () => {
   handleRouting();
 });
 
+// --- 👦 お子さんタブ ＆ フィルター管理 ---
+let activeChildId = 'all';
+
+function renderChildTabs() {
+  const container = document.getElementById('childTabsContainer');
+  if (!container) return;
+  const children = DB.getChildren();
+
+  let tabsHtml = `
+    <button onclick="filterByChild('all', this)" class="child-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 border ${activeChildId === 'all' ? 'bg-stone-900 text-white border-stone-900 shadow-xs' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}">
+      <span>👨‍👩‍👧‍👦</span> <span>全員</span>
+    </button>
+  `;
+
+  children.forEach(child => {
+    const isActive = String(activeChildId) === String(child.id);
+    const theme = CHILD_COLOR_MAP[child.color] || CHILD_COLOR_MAP.blue;
+    const gradeStr = child.grade ? ` (${escapeHtml(child.grade)})` : '';
+    const activeCls = isActive ? `${theme.tabActive} border-transparent` : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50';
+    tabsHtml += `
+      <button onclick="filterByChild('${child.id}', this)" class="child-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 border ${activeCls}">
+        <span>${child.icon || '👶'}</span> <span>${escapeHtml(child.name)}${gradeStr}</span>
+      </button>
+    `;
+  });
+
+  if (children.length === 0) {
+    tabsHtml += `
+      <button onclick="openSettingsModal('children')" class="child-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 border border-dashed border-rose-300 text-rose-600 hover:bg-rose-50">
+        <span>＋</span> <span>お子さんを登録</span>
+      </button>
+    `;
+  }
+
+  container.innerHTML = tabsHtml;
+}
+
+function filterByChild(childId, el) {
+  activeChildId = childId;
+  renderHomePage();
+}
+
 // --- ホーム画面描画 ---
 let activeTag = 'all';
 
 function renderHomePage() {
-  const posts = DB.getPosts();
+  const allPosts = DB.getPosts();
   const settings = DB.getSettings();
 
   const userEl = document.getElementById('userNameDisplay');
   if (userEl) userEl.innerText = settings.user_name || 'ゲスト';
 
-  renderUpcomingEvents(posts);
-  renderPostsList(posts);
+  renderChildTabs();
+
+  // activeChildId による絞り込み
+  const filteredPosts = (activeChildId === 'all')
+    ? allPosts
+    : allPosts.filter(p => !p.child_id || p.child_id === 'all' || String(p.child_id) === String(activeChildId));
+
+  renderUpcomingEvents(filteredPosts);
+  renderPostsList(filteredPosts);
+  applyTagFilters();
 }
 
 // 📅 直近の予定（今日以降の未来の予定のみを表示 - コンパクト版）
@@ -268,6 +394,10 @@ function renderUpcomingEvents(posts) {
       <span class="item-tag truncate max-w-[120px]">🎒 ${escapeHtml(it.split('(')[0].trim())}</span>
     `).join('');
 
+    const childBadge = (activeChildId === 'all' && p.child_id && p.child_id !== 'all')
+      ? getChildBadgeHtml(p.child_id)
+      : '';
+
     return `
       <a href="#/post/${p.id}" class="m3-card post-card otayori-card block p-3 no-underline">
         <div class="flex items-center justify-between gap-3">
@@ -277,7 +407,10 @@ function renderUpcomingEvents(posts) {
               <span class="month">${month}</span>
             </div>
             <div class="min-w-0 flex-1">
-              <h4 class="font-bold text-xs text-stone-900 truncate leading-snug">${escapeHtml(p.title)}</h4>
+              <div class="flex items-center gap-1.5 mb-0.5">
+                ${childBadge}
+                <h4 class="font-bold text-xs text-stone-900 truncate leading-snug">${escapeHtml(p.title)}</h4>
+              </div>
               <div class="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500 font-medium">
                 ${timeStr}
                 ${locStr}
@@ -335,11 +468,14 @@ function renderPostsList(posts) {
       ? `<span class="text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded-md font-bold text-[10px]">🖼️ 写真あり</span>`
       : '';
 
+    const childBadge = (p.child_id && p.child_id !== 'all') ? getChildBadgeHtml(p.child_id) : '';
+
     return `
-      <a href="#/post/${p.id}" data-tags="${escapeHtml(rawTags)}" class="m3-card post-card otayori-card block p-3.5 no-underline">
-        <!-- 上部：タグ ＆ 日程 -->
+      <a href="#/post/${p.id}" data-tags="${escapeHtml(rawTags)}" data-child-id="${p.child_id || 'all'}" class="m3-card post-card otayori-card block p-3.5 no-underline">
+        <!-- 上部：お子さんバッジ ＆ タグ ＆ 日程 -->
         <div class="flex items-center justify-between gap-2 mb-2">
           <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+            ${childBadge}
             ${tagsHtml}
           </div>
           ${pDateStr ? `<span class="text-[11px] text-stone-500 font-bold whitespace-nowrap flex-shrink-0">${pDateStr}</span>` : ''}
@@ -378,32 +514,23 @@ function renderPostsList(posts) {
   if (countEl) countEl.innerText = `${posts.length}件`;
 }
 
-// --- タグフィルター（設定されたタグのみで厳密に判定） ---
+// --- タグフィルター ---
 function filterByTag(tag, el) {
   activeTag = tag;
-
   const allBtns = document.querySelectorAll('.tag-filter-btn');
-  allBtns.forEach(btn => {
-    btn.classList.remove('active');
-  });
+  allBtns.forEach(btn => btn.classList.remove('active'));
+  if (el) el.classList.add('active');
+  applyTagFilters();
+}
 
-  if (el) {
-    el.classList.add('active');
-  }
-
+function applyTagFilters() {
   const cards = document.querySelectorAll('#postsList .otayori-card, #postsList .m3-card, #postsList .post-card');
   let matchCount = 0;
 
   cards.forEach(card => {
     const rawTagsStr = card.getAttribute('data-tags') || '';
     const tagsArr = normalizeTags(rawTagsStr.split(','));
-    let isMatch = false;
-
-    if (tag === 'all') {
-      isMatch = true;
-    } else {
-      isMatch = tagsArr.includes(tag);
-    }
+    const isMatch = (activeTag === 'all') || tagsArr.includes(activeTag);
 
     if (isMatch) {
       card.style.removeProperty('display');
@@ -416,6 +543,7 @@ function filterByTag(tag, el) {
   const countEl = document.getElementById('postsCount');
   if (countEl) countEl.innerText = `${matchCount}件`;
 }
+
 
 // --- 詳細画面描画 (コンパクト ＆ スマホ最適化) ---
 function renderDetailPage(postId) {
@@ -448,7 +576,8 @@ function renderDetailPage(postId) {
   const rawText = (post.text_raw || post.image_raw || '').trim();
   const imgUrl = (post.image_url || '').trim();
 
-  // タグHTML
+  // お子さん ＆ タグHTML
+  const childBadge = (post.child_id && post.child_id !== 'all') ? getChildBadgeHtml(post.child_id) : '';
   const tagsHtml = (normalizeTags(post.tags, transText)).map(t => getTagBadgeHtml(t)).join('');
 
   // 持ち物HTML
@@ -614,6 +743,58 @@ function deleteCurrentPost(id, title) {
   window.location.hash = '#/';
 }
 
+// --- 対象のお子さん選択UI (新規追加 ＆ 編集画面共通) ---
+let newSelectedChildId = 'all';
+let editSelectedChildId = 'all';
+
+function renderChildSelector(containerId, currentSelectedId, onSelectFnName) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const children = DB.getChildren();
+
+  let html = `
+    <button type="button" onclick="${onSelectFnName}('all')" class="child-select-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition ${currentSelectedId === 'all' || !currentSelectedId ? 'bg-stone-900 text-white border-stone-900 shadow-xs' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'}">
+      <span>👨‍👩‍👧‍👦 全員共通</span>
+    </button>
+  `;
+
+  children.forEach(child => {
+    const isSelected = String(currentSelectedId) === String(child.id);
+    const theme = CHILD_COLOR_MAP[child.color] || CHILD_COLOR_MAP.blue;
+    const cls = isSelected ? `${theme.pillActive} shadow-xs font-bold` : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 font-medium';
+    const gradeStr = child.grade ? ` (${escapeHtml(child.grade)})` : '';
+    html += `
+      <button type="button" onclick="${onSelectFnName}('${child.id}')" class="child-select-btn px-3 py-1.5 rounded-xl text-xs border transition ${cls}">
+        <span>${child.icon || '👶'}</span> <span>${escapeHtml(child.name)}${gradeStr}</span>
+      </button>
+    `;
+  });
+
+  if (children.length === 0) {
+    html += `
+      <button type="button" onclick="openSettingsModal('children')" class="px-2.5 py-1.5 text-xs text-rose-500 font-bold hover:underline flex items-center gap-1">
+        <span>＋ お子さんを登録する</span>
+      </button>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function selectNewPostChild(childId) {
+  newSelectedChildId = childId;
+  const input = document.getElementById('newPostChildId');
+  if (input) input.value = childId;
+  renderChildSelector('newChildSelectorContainer', newSelectedChildId, 'selectNewPostChild');
+}
+
+function selectEditPostChild(childId) {
+  editSelectedChildId = childId;
+  const input = document.getElementById('editPostChildId');
+  if (input) input.value = childId;
+  renderChildSelector('editChildSelectorContainer', editSelectedChildId, 'selectEditPostChild');
+}
+
 // --- 新規追加画面 ---
 let newSelectedFile = null;
 let newUploadedImageUrl = null;
@@ -624,6 +805,10 @@ function renderNewPage() {
   newSelectedFile = null;
   newUploadedImageUrl = null;
   newSelectedTags = ['English'];
+  newSelectedChildId = (activeChildId && activeChildId !== 'all') ? activeChildId : 'all';
+  const childInput = document.getElementById('newPostChildId');
+  if (childInput) childInput.value = newSelectedChildId;
+  renderChildSelector('newChildSelectorContainer', newSelectedChildId, 'selectNewPostChild');
 
   document.getElementById('newRawTextInput').value = '';
   document.getElementById('newSelectedFileName').classList.add('hidden');
@@ -966,6 +1151,16 @@ async function callGeminiDirect(apiKey, b64Image, textContent) {
 あなたは学校・幼稚園・インターナショナルスクール等の英語のおたより（Newsletters, Schedule Tables, Event Notices, Handouts）を、保護者向けに極めて分かりやすく丁寧な日本語に翻訳・整理・構造化する専門AIです。
 必ず以下のJSON形式のみを出力してください（Markdownコードブロック不要、純粋なJSON）。
 
+${(() => {
+  const children = DB.getChildren();
+  if (children.length === 0) return '';
+  const cList = children.map(c => `- ID: "${c.id}", お名前: "${c.name}", 学年/クラス: "${c.grade || '未設定'}"`).join('\n');
+  return `【対象のお子さん（child_id）の自動判定】
+登録されているお子さん一覧:
+${cList}
+- おたよりの内容（学年表記、クラス名、宛名等）から特定のお子さんに該当すると判断できる場合は、"child_id" にそのID（例: "${children[0].id}"）を設定してください。
+- 兄弟姉妹共通、全校生徒向け、または特定のお子さんを判別できない場合は "child_id": "all" にしてください。\n`;
+})()}
 【タグ分類の厳格ルール】
 tags に設定できる値は以下の5種類のみです（複数可）:
 - "English" : 英語学習、UOI、読書、ライティング、Language Arts等
@@ -1042,7 +1237,8 @@ tags に設定できる値は以下の5種類のみです（複数可）:
   "text_raw": "メッセージ英語原文（ない場合はnull）",
   "image_translation": "画像内英文の丁寧な日本語全訳・構造化テキスト（表やリストはセッション・日にちごとに==============================で区切って見やすく箇条書き）（画像がない場合はnull）",
   "image_raw": "画像内英文OCR・英語原文（画像がない場合はnull）",
-  "tags": ["English"]
+  "tags": ["English"],
+  "child_id": "all (または該当するお子さんのID)"
 }
 `;
 
@@ -1247,6 +1443,18 @@ async function clientSideTranslateEngine(text, file, b64Image) {
       titleJa = "学校からのおたより";
     }
     if (!titleEn) titleEn = "School Notice";
+  }
+
+  // お子さん自動判定
+  let detectedChildId = 'all';
+  const allChildren = DB.getChildren();
+  for (const c of allChildren) {
+    const nLower = (c.name || '').toLowerCase();
+    const gLower = (c.grade || '').toLowerCase();
+    if ((nLower && combined.toLowerCase().includes(nLower)) || (gLower && combined.toLowerCase().includes(gLower))) {
+      detectedChildId = c.id;
+      break;
+    }
   }
 
   // タグ (English, Math, Mandarin, event, その他)
@@ -1511,6 +1719,7 @@ function submitNewPost(e) {
     deadline_description: document.getElementById('newPostDeadlineDesc').value.trim() || null,
     items: itemsArr,
     tags: (newSelectedTags && newSelectedTags.length > 0) ? normalizeTags(newSelectedTags) : ['その他'],
+    child_id: document.getElementById('newPostChildId').value || newSelectedChildId || 'all',
     image_url: newUploadedImageUrl
   };
 
@@ -1535,6 +1744,10 @@ function renderEditPage(postId) {
   editPostId = postId;
   editUploadedImageUrl = post.image_url || null;
   editSelectedTags = post.tags ? normalizeTags(post.tags) : ['その他'];
+  editSelectedChildId = post.child_id || 'all';
+  const editChildInput = document.getElementById('editPostChildId');
+  if (editChildInput) editChildInput.value = editSelectedChildId;
+  renderChildSelector('editChildSelectorContainer', editSelectedChildId, 'selectEditPostChild');
 
   const backLink = document.getElementById('editBackLink');
   if (backLink) backLink.href = `#/post/${postId}`;
@@ -1639,6 +1852,7 @@ function submitEditPost(e) {
     deadline_description: document.getElementById('editPostDeadlineDesc').value.trim() || null,
     items: itemsArr,
     tags: editSelectedTags.length > 0 ? normalizeTags(editSelectedTags) : ['その他'],
+    child_id: document.getElementById('editPostChildId').value || editSelectedChildId || 'all',
     image_url: editUploadedImageUrl,
     updated_at: new Date().toISOString()
   };
@@ -1649,13 +1863,87 @@ function submitEditPost(e) {
   renderDetailPage(editPostId);
 }
 
-// --- 設定モーダル ---
-function openSettingsModal() {
+// --- 設定モーダル ＆ お子さん管理 ---
+function openSettingsModal(tab) {
   const settings = DB.getSettings();
   document.getElementById('settingUserName').value = settings.user_name || 'ゲスト';
   document.getElementById('settingApiKey').value = settings.gemini_api_key || '';
+  renderSettingsChildren();
   document.getElementById('settingsModal').classList.remove('hidden');
 }
+
+function renderSettingsChildren() {
+  const container = document.getElementById('settingsChildrenList');
+  if (!container) return;
+  const children = DB.getChildren();
+  if (children.length === 0) {
+    container.innerHTML = `
+      <div class="p-2.5 text-center text-stone-400 text-[11px] bg-stone-50 rounded-xl border border-dashed border-stone-200">
+        登録されたお子さんはいません
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = children.map(c => {
+    const theme = CHILD_COLOR_MAP[c.color] || CHILD_COLOR_MAP.blue;
+    const gradeStr = c.grade ? `・${escapeHtml(c.grade)}` : '';
+    return `
+      <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200 shadow-2xs">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-base flex-shrink-0">${c.icon || '👶'}</span>
+          <div class="min-w-0">
+            <span class="font-bold text-xs text-stone-900">${escapeHtml(c.name)}</span>
+            <span class="text-[10px] text-stone-500 font-medium">${gradeStr}</span>
+          </div>
+        </div>
+        <button type="button" onclick="deleteChildFromSettings('${c.id}')" class="w-6 h-6 rounded-lg bg-stone-100 hover:bg-rose-50 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs font-bold transition" title="削除">
+          ✕
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function addNewChildFromSettings() {
+  const nameInput = document.getElementById('newChildName');
+  const gradeInput = document.getElementById('newChildGrade');
+  const iconInput = document.getElementById('newChildIcon');
+  const colorInput = document.getElementById('newChildColor');
+
+  const name = (nameInput.value || '').trim();
+  if (!name) {
+    alert('お子さんのお名前を入力してください');
+    nameInput.focus();
+    return;
+  }
+
+  const newChild = {
+    name: name,
+    grade: (gradeInput.value || '').trim(),
+    icon: iconInput.value || '👶',
+    color: colorInput.value || 'blue'
+  };
+
+  DB.saveChild(newChild);
+  nameInput.value = '';
+  gradeInput.value = '';
+  renderSettingsChildren();
+  renderChildTabs();
+}
+
+function deleteChildFromSettings(childId) {
+  if (!confirm('このお子さんの登録を削除しますか？')) return;
+  DB.deleteChild(childId);
+  if (activeChildId === childId) {
+    activeChildId = 'all';
+  }
+  renderSettingsChildren();
+  renderChildTabs();
+  renderHomePage();
+}
+
+
 
 function closeSettingsModal() {
   document.getElementById('settingsModal').classList.add('hidden');
@@ -1663,7 +1951,9 @@ function closeSettingsModal() {
 
 function saveSettings(e) {
   e.preventDefault();
+  const current = DB.getSettings();
   const settings = {
+    ...current,
     user_name: document.getElementById('settingUserName').value.trim() || 'ゲスト',
     gemini_api_key: document.getElementById('settingApiKey').value.trim(),
     notification_time: "18:00"
@@ -1672,6 +1962,7 @@ function saveSettings(e) {
   closeSettingsModal();
   document.getElementById('userNameDisplay').innerText = settings.user_name;
   updateAiEngineStatusBanner();
+  renderChildTabs();
   alert('⚙️ 設定を保存しました！');
 }
 
