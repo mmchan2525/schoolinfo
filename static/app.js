@@ -1,3 +1,76 @@
+// --- 設定モーダル ＆ タグ管理 ---
+function renderSettingsTags() {
+  const container = document.getElementById('settingsTagsList');
+  if (!container) return;
+  const customTags = DB.getCustomTags();
+
+  let html = DEFAULT_TAGS.map(t => {
+    return `<span class="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold flex items-center gap-1 border border-stone-200">
+      <span>${escapeHtml(t)}</span>
+      <span class="text-[9px] bg-stone-200 text-stone-600 px-1 rounded">初期</span>
+    </span>`;
+  }).join('');
+
+  customTags.forEach(t => {
+    html += `
+      <span class="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-900 text-xs font-bold flex items-center gap-1.5 border border-amber-200 shadow-2xs">
+        <span>🏷️ ${escapeHtml(t)}</span>
+        <button type="button" onclick="deleteCustomTagFromSettings('${escapeHtml(t)}')" class="text-stone-400 hover:text-rose-600 font-bold ml-0.5" title="削除">✕</button>
+      </span>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function addCustomTagFromSettings() {
+  const input = document.getElementById('newCustomTagInput');
+  const tag = (input ? input.value : '').trim();
+  if (!tag) {
+    alert('タグ名を入力してください');
+    if (input) input.focus();
+    return;
+  }
+  DB.addCustomTag(tag);
+  if (input) input.value = '';
+  renderSettingsTags();
+  renderHomeTagFilters();
+}
+
+function deleteCustomTagFromSettings(tag) {
+  if (!confirm(`タグ「${tag}」を削除しますか？`)) return;
+  DB.deleteCustomTag(tag);
+  if (activeTag === tag) {
+    activeTag = 'all';
+  }
+  renderSettingsTags();
+  renderHomeTagFilters();
+  renderHomePage();
+}
+// --- ホーム画面 タグフィルター描画 ---
+function renderHomeTagFilters() {
+  const container = document.getElementById('homeTagFilterContainer');
+  if (!container) return;
+  const allTags = DB.getAllTags();
+
+  let html = `
+    <button onclick="filterByTag('all', this)" class="tag-filter-btn ${activeTag === 'all' ? 'active' : ''}">すべて</button>
+  `;
+
+  allTags.forEach(tag => {
+    let icon = '🏷️';
+    if (tag === 'English') icon = '📚';
+    else if (tag === 'Math') icon = '🔢';
+    else if (tag === 'Mandarin') icon = '🀄';
+    else if (tag === 'event') icon = '🏫';
+    
+    html += `
+      <button onclick="filterByTag('${escapeHtml(tag)}', this)" class="tag-filter-btn ${activeTag === tag ? 'active' : ''}">${icon} ${escapeHtml(tag)}</button>
+    `;
+  });
+
+  container.innerHTML = html;
+}
 // 👶 お子さんカラー ＆ バッジ定義
 const CHILD_COLOR_MAP = {
   blue: {
@@ -36,50 +109,79 @@ function getChildBadgeHtml(childId) {
   return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${theme.badge} inline-flex items-center gap-1 flex-shrink-0">${child.icon || '👶'} ${escapeHtml(child.name)}${gradeStr}</span>`;
 }
 
-// 🏷️ タグバッジHTML生成 ＆ 正規化（English, Math, Mandarin, event, その他）
+// 🏷️ デフォルトタグ ＆ カスタムタグ定義
+const DEFAULT_TAGS = ['English', 'Math', 'Mandarin', 'event', 'その他'];
+
+const CUSTOM_TAG_PALETTES = [
+  'bg-amber-50 text-amber-800 border-amber-200',
+  'bg-teal-50 text-teal-800 border-teal-200',
+  'bg-cyan-50 text-cyan-800 border-cyan-200',
+  'bg-indigo-50 text-indigo-800 border-indigo-200',
+  'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200',
+  'bg-lime-50 text-lime-800 border-lime-200'
+];
+
 function getTagBadgeHtml(t) {
-  let color = 'bg-stone-100 text-stone-700 border border-stone-200', icon = '🏷️';
+  let color = 'bg-stone-100 text-stone-700 border-stone-200', icon = '🏷️';
   let label = t;
   if (t === 'English' || t.includes('English') || t.includes('英語') || t.includes('UOI')) {
-    color = 'bg-blue-50 text-blue-700 border border-blue-200';
+    color = 'bg-blue-50 text-blue-700 border-blue-200';
     icon = '📚';
     label = 'English';
   } else if (t === 'Math' || t.includes('Math') || t.includes('算数') || t.includes('数学')) {
-    color = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    color = 'bg-emerald-50 text-emerald-700 border-emerald-200';
     icon = '🔢';
     label = 'Math';
   } else if (t === 'Mandarin' || t.includes('Mandarin') || t.includes('中国語') || t.includes('Chinese')) {
-    color = 'bg-rose-50 text-rose-700 border border-rose-200';
+    color = 'bg-rose-50 text-rose-700 border-rose-200';
     icon = '🀄';
     label = 'Mandarin';
   } else if (t === 'event' || t === 'Event' || t.includes('event') || t.includes('Event') || t.includes('行事') || t.includes('イベント')) {
-    color = 'bg-purple-50 text-purple-700 border border-purple-200';
+    color = 'bg-purple-50 text-purple-700 border-purple-200';
     icon = '🏫';
     label = 'event';
-  } else {
-    color = 'bg-stone-100 text-stone-700 border border-stone-200';
+  } else if (t === 'その他') {
+    color = 'bg-stone-100 text-stone-700 border-stone-200';
     icon = '🏷️';
     label = 'その他';
+  } else {
+    // カスタムタグ用のパレット
+    let hash = 0;
+    for (let i = 0; i < t.length; i++) hash = (hash * 31 + t.charCodeAt(i)) % CUSTOM_TAG_PALETTES.length;
+    color = CUSTOM_TAG_PALETTES[Math.abs(hash)];
+    icon = '🏷️';
+    label = t;
   }
-  return `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${color}">${icon} ${escapeHtml(label)}</span>`;
+  return `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${color}">${icon} ${escapeHtml(label)}</span>`;
 }
 
 function normalizeTags(rawTags, contentText = '') {
   const text = (contentText || '').toLowerCase();
+  const allTags = DB.getAllTags();
   const normalized = [];
 
   if (Array.isArray(rawTags)) {
     for (const t of rawTags) {
-      if (t === 'English' || t.includes('English') || t.includes('英語') || t.includes('UOI')) {
+      if (!t) continue;
+      const tTrimmed = String(t).trim();
+      if (tTrimmed === 'English' || tTrimmed.includes('English') || tTrimmed.includes('英語') || tTrimmed.includes('UOI')) {
         if (!normalized.includes('English')) normalized.push('English');
-      } else if (t === 'Math' || t.includes('Math') || t.includes('算数') || t.includes('数学')) {
+      } else if (tTrimmed === 'Math' || tTrimmed.includes('Math') || tTrimmed.includes('算数') || tTrimmed.includes('数学')) {
         if (!normalized.includes('Math')) normalized.push('Math');
-      } else if (t === 'Mandarin' || t.includes('Mandarin') || t.includes('中国語') || t.includes('Chinese')) {
+      } else if (tTrimmed === 'Mandarin' || tTrimmed.includes('Mandarin') || tTrimmed.includes('中国語') || tTrimmed.includes('Chinese')) {
         if (!normalized.includes('Mandarin')) normalized.push('Mandarin');
-      } else if (t === 'event' || t === 'Event' || t.includes('event') || t.includes('行事') || t.includes('イベント')) {
+      } else if (tTrimmed === 'event' || tTrimmed === 'Event' || tTrimmed.includes('event') || tTrimmed.includes('行事') || tTrimmed.includes('イベント')) {
         if (!normalized.includes('event')) normalized.push('event');
-      } else if (t === 'その他') {
+      } else if (tTrimmed === 'その他') {
         if (!normalized.includes('その他')) normalized.push('その他');
+      } else {
+        // カスタムタグマッチ
+        const matchedCustom = allTags.find(ct => ct.toLowerCase() === tTrimmed.toLowerCase());
+        if (matchedCustom) {
+          if (!normalized.includes(matchedCustom)) normalized.push(matchedCustom);
+        } else {
+          if (!normalized.includes(tTrimmed)) normalized.push(tTrimmed);
+        }
       }
     }
   }
@@ -97,6 +199,14 @@ function normalizeTags(rawTags, contentText = '') {
     if (text.includes('event') || text.includes('trip') || text.includes('field trip') || text.includes('festival') || text.includes('ceremony') || text.includes('sports day') || text.includes('concert') || text.includes('party') || text.includes('行事') || text.includes('遠足') || text.includes('イベント')) {
       normalized.push('event');
     }
+
+    // カスタムタグのテキストマッチング
+    const customTags = DB.getCustomTags();
+    for (const ct of customTags) {
+      if (text.includes(ct.toLowerCase())) {
+        if (!normalized.includes(ct)) normalized.push(ct);
+      }
+    }
   }
 
   if (normalized.length === 0) {
@@ -105,6 +215,7 @@ function normalizeTags(rawTags, contentText = '') {
 
   return normalized;
 }
+
 
 // School Info - Standalone SPA Logic for GitHub Pages
 // (C) 2026 Otayori Post / School Info
@@ -203,6 +314,39 @@ const DB = {
     return posts.length < initialLen;
   },
 
+  getCustomTags: function() {
+    const s = this.getSettings();
+    return Array.isArray(s.custom_tags) ? s.custom_tags : [];
+  },
+
+  getAllTags: function() {
+    const custom = this.getCustomTags();
+    const list = [...DEFAULT_TAGS];
+    for (const t of custom) {
+      if (!list.includes(t)) list.push(t);
+    }
+    return list;
+  },
+
+  addCustomTag: function(tag) {
+    const trimmed = (tag || '').trim();
+    if (!trimmed) return this.getAllTags();
+    const settings = this.getSettings();
+    if (!Array.isArray(settings.custom_tags)) settings.custom_tags = [];
+    if (!DEFAULT_TAGS.includes(trimmed) && !settings.custom_tags.includes(trimmed)) {
+      settings.custom_tags.push(trimmed);
+      this.saveSettings(settings);
+    }
+    return this.getAllTags();
+  },
+
+  deleteCustomTag: function(tag) {
+    const settings = this.getSettings();
+    if (!Array.isArray(settings.custom_tags)) return this.getAllTags();
+    settings.custom_tags = settings.custom_tags.filter(t => t !== tag);
+    this.saveSettings(settings);
+    return this.getAllTags();
+  },
   getChildren: function() {
     const s = this.getSettings();
     return Array.isArray(s.children) ? s.children : [];
@@ -242,6 +386,7 @@ const DB = {
       if (data) {
         const parsed = JSON.parse(data);
         if (!Array.isArray(parsed.children)) parsed.children = [];
+        if (!Array.isArray(parsed.custom_tags)) parsed.custom_tags = [];
         return parsed;
       }
     } catch(e) {}
@@ -250,7 +395,7 @@ const DB = {
       gemini_api_key: "",
       line_notify_token: "",
       notification_time: "18:00",
-      children: []
+      children: [], custom_tags: []
     };
   },
 
@@ -357,6 +502,7 @@ function renderHomePage() {
   if (userEl) userEl.innerText = settings.user_name || 'ゲスト';
 
   renderChildTabs();
+  renderHomeTagFilters();
 
   // activeChildId による絞り込み
   const filteredPosts = (activeChildId === 'all')
@@ -872,24 +1018,7 @@ function saveInlineApiKey() {
   alert('✨ Gemini APIキーを保存しました！高精度モードが有効になりました。');
 }
 
-function renderNewTags() {
-  const container = document.getElementById('newTagContainer');
-  if (!container) return;
-  container.innerHTML = ALL_TAGS.map(t => {
-    const isSel = newSelectedTags.includes(t);
-    const bg = isSel ? 'bg-stone-800 text-white font-bold' : 'bg-stone-100 text-stone-600 hover:bg-stone-200';
-    return `<button type="button" onclick="toggleNewTag('${t}')" class="px-3 py-1.5 rounded-full text-xs transition ${bg}">${t}</button>`;
-  }).join('');
-}
 
-function toggleNewTag(t) {
-  if (newSelectedTags.includes(t)) {
-    newSelectedTags = newSelectedTags.filter(x => x !== t);
-  } else {
-    newSelectedTags.push(t);
-  }
-  renderNewTags();
-}
 
 // ==========================================
 // 🌟 堅牢・画像圧縮 ＆ 多段式 AI 解析・日本語翻訳エンジン
@@ -1161,7 +1290,20 @@ ${cList}
 - おたよりの内容（学年表記、クラス名、宛名等）から特定のお子さんに該当すると判断できる場合は、"child_id" にそのID（例: "${children[0].id}"）を設定してください。
 - 兄弟姉妹共通、全校生徒向け、または特定のお子さんを判別できない場合は "child_id": "all" にしてください。\n`;
 })()}
-【タグ分類の厳格ルール】
+${(() => {
+  const allT = DB.getAllTags();
+  const tListStr = allT.map(t => `"${t}"`).join(', ');
+  return `【タグ分類のルール】
+tags に設定できる値は以下の一覧の中から最も適切なものを選択してください（複数可）:
+[ ${tListStr} ]
+- "English" : 英語学習、UOI、読書、ライティング、Language Arts等
+- "Math" : 算数、数学、幾何、計算等
+- "Mandarin" : 中国語、華語、中文等
+- "event" : 学校行事、遠足、祝祭、発表会、スポーツデー等
+- "その他" : 上記やカスタムタグに当てはまらない一般連絡
+※ 必ず上記タグ一覧の中から選択してください。\n`;
+})()}
+
 tags に設定できる値は以下の5種類のみです（複数可）:
 - "English" : 英語学習、UOI、読書、ライティング、Language Arts等
 - "Math" : 算数、数学、幾何、計算等
@@ -1781,14 +1923,55 @@ function renderEditPage(postId) {
   renderEditTags();
 }
 
+
+
+function renderNewTags() {
+  const container = document.getElementById('newTagContainer');
+  if (!container) return;
+  const allTags = DB.getAllTags();
+
+  let html = allTags.map(t => {
+    const isSel = newSelectedTags.includes(t);
+    const bg = isSel ? 'bg-stone-900 text-white font-bold shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200';
+    return `<button type="button" onclick="toggleNewTag('${escapeHtml(t)}')" class="px-3 py-1.5 rounded-full text-xs transition ${bg}">${escapeHtml(t)}</button>`;
+  }).join('');
+
+  html += `
+    <button type="button" onclick="promptAddNewTag('new')" class="px-3 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 border border-dashed border-rose-300 transition flex items-center gap-0.5">
+      <span>＋ タグを追加</span>
+    </button>
+  `;
+
+  container.innerHTML = html;
+}
+
+function toggleNewTag(t) {
+  if (newSelectedTags.includes(t)) {
+    newSelectedTags = newSelectedTags.filter(x => x !== t);
+  } else {
+    newSelectedTags.push(t);
+  }
+  renderNewTags();
+}
+
 function renderEditTags() {
   const container = document.getElementById('editTagContainer');
   if (!container) return;
-  container.innerHTML = ALL_TAGS.map(t => {
+  const allTags = DB.getAllTags();
+
+  let html = allTags.map(t => {
     const isSel = editSelectedTags.includes(t);
-    const bg = isSel ? 'bg-stone-800 text-white font-bold' : 'bg-stone-100 text-stone-600 hover:bg-stone-200';
-    return `<button type="button" onclick="toggleEditTag('${t}')" class="px-3 py-1.5 rounded-full text-xs transition ${bg}">${t}</button>`;
+    const bg = isSel ? 'bg-stone-900 text-white font-bold shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200';
+    return `<button type="button" onclick="toggleEditTag('${escapeHtml(t)}')" class="px-3 py-1.5 rounded-full text-xs transition ${bg}">${escapeHtml(t)}</button>`;
   }).join('');
+
+  html += `
+    <button type="button" onclick="promptAddNewTag('edit')" class="px-3 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 border border-dashed border-rose-300 transition flex items-center gap-0.5">
+      <span>＋ タグを追加</span>
+    </button>
+  `;
+
+  container.innerHTML = html;
 }
 
 function toggleEditTag(t) {
@@ -1798,6 +1981,22 @@ function toggleEditTag(t) {
     editSelectedTags.push(t);
   }
   renderEditTags();
+}
+
+function promptAddNewTag(context) {
+  const tagName = prompt('追加したい新しいタグ名を入力してください\n(例: Science, 水泳, PTA, 提出物あり)');
+  if (!tagName || !tagName.trim()) return;
+  const trimmed = tagName.trim();
+  DB.addCustomTag(trimmed);
+
+  if (context === 'new') {
+    if (!newSelectedTags.includes(trimmed)) newSelectedTags.push(trimmed);
+    renderNewTags();
+  } else if (context === 'edit') {
+    if (!editSelectedTags.includes(trimmed)) editSelectedTags.push(trimmed);
+    renderEditTags();
+  }
+  renderHomeTagFilters();
 }
 
 async function handleEditFileChange(e) {
@@ -1870,6 +2069,7 @@ function openSettingsModal(tab) {
   document.getElementById('settingApiKey').value = settings.gemini_api_key || '';
   resetChildForm();
   renderSettingsChildren();
+  renderSettingsTags();
   document.getElementById('settingsModal').classList.remove('hidden');
 }
 
@@ -2016,7 +2216,9 @@ function saveChildFromSettings() {
   DB.saveChild(childData);
   resetChildForm();
   renderSettingsChildren();
+  renderSettingsTags();
   renderChildTabs();
+  renderHomeTagFilters();
   renderHomePage();
 }
 
@@ -2034,7 +2236,9 @@ function deleteChildFromSettings(childId) {
     resetChildForm();
   }
   renderSettingsChildren();
+  renderSettingsTags();
   renderChildTabs();
+  renderHomeTagFilters();
   renderHomePage();
 }
 
@@ -2059,6 +2263,7 @@ function saveSettings(e) {
   document.getElementById('userNameDisplay').innerText = settings.user_name;
   updateAiEngineStatusBanner();
   renderChildTabs();
+  renderHomeTagFilters();
   alert('⚙️ 設定を保存しました！');
 }
 

@@ -11,7 +11,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="./style.css?v=20260930_v23">
+  <link rel="stylesheet" href="./style.css?v=20260930_v24">
   <link rel="manifest" href="./manifest.json">
   
   <!-- iOS Safari PWA / WebClip Settings -->
@@ -92,15 +92,8 @@
             <span id="postsCount" class="text-[11px] font-black px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">0件</span>
           </div>
 
-          <!-- M3 Filter Chips (タグフィルター - 横スクロール) -->
-          <div class="flex items-center gap-1.5 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar text-xs">
-            <button onclick="filterByTag('all', this)" class="tag-filter-btn active">すべて</button>
-            <button onclick="filterByTag('English', this)" class="tag-filter-btn">📚 English</button>
-            <button onclick="filterByTag('Math', this)" class="tag-filter-btn">🔢 Math</button>
-            <button onclick="filterByTag('Mandarin', this)" class="tag-filter-btn">🀄 Mandarin</button>
-            <button onclick="filterByTag('event', this)" class="tag-filter-btn">🏫 event</button>
-            <button onclick="filterByTag('その他', this)" class="tag-filter-btn">🏷️ その他</button>
-          </div>
+          <!-- M3 Filter Chips (タグフィルター - 横スクロール・動的生成) -->
+          <div id="homeTagFilterContainer" class="flex items-center gap-1.5 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar text-xs"></div>
 
           <!-- おたよりカードリスト (横書き・コンパクト) -->
           <div id="postsList" class="space-y-2.5 mt-1"></div>
@@ -512,6 +505,27 @@
             </div>
           </div>
 
+                    <!-- 🏷️ タグの追加・管理 -->
+          <div class="pt-2 border-t border-stone-100 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="font-bold text-stone-800 text-[11px] flex items-center gap-1">
+                <span>🏷️ タグの管理</span>
+              </label>
+              <span class="text-[10px] text-stone-400 font-medium">（カスタムタグの追加・削除）</span>
+            </div>
+
+            <!-- タグ一覧 -->
+            <div id="settingsTagsList" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-0.5 pt-0.5"></div>
+
+            <!-- 新規タグ追加入力 -->
+            <div class="flex gap-1.5 pt-1">
+              <input type="text" id="newCustomTagInput" placeholder="新しいタグ名 (例: Science, 水泳, PTA)" class="flex-1 p-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold focus:outline-none focus:border-stone-400">
+              <button type="button" onclick="addCustomTagFromSettings()" class="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 active:scale-95 text-white rounded-xl text-xs font-bold transition shadow-xs flex-shrink-0">
+                ＋ 追加
+              </button>
+            </div>
+          </div>
+
           <div>
             <label class="font-bold text-stone-800 block mb-0.5 text-[11px]">Gemini APIキー（無料・画像OCR用）</label>
             <input type="password" id="settingApiKey" placeholder="AIzaSy... (任意)" class="w-full p-2 bg-stone-50 border border-stone-200 rounded-xl font-mono text-[10px]">
@@ -545,6 +559,6 @@
 
   </div>
 
-  <script src="./app.js?v=20260930_v23"></script>
+  <script src="./app.js?v=20260930_v24"></script>
 </body>
 </html>
