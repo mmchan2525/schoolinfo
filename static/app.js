@@ -1863,13 +1863,18 @@ function submitEditPost(e) {
   renderDetailPage(editPostId);
 }
 
-// --- 設定モーダル ＆ お子さん管理 ---
+// --- 設定モーダル ＆ お子さん管理（追加・編集・削除） ---
 function openSettingsModal(tab) {
   const settings = DB.getSettings();
   document.getElementById('settingUserName').value = settings.user_name || 'ゲスト';
   document.getElementById('settingApiKey').value = settings.gemini_api_key || '';
+  resetChildForm();
   renderSettingsChildren();
   document.getElementById('settingsModal').classList.remove('hidden');
+}
+
+function handleChildGenderChange(gender) {
+  // Radio change handler for reactive UI
 }
 
 function renderSettingsChildren() {
@@ -1886,30 +1891,101 @@ function renderSettingsChildren() {
   }
 
   container.innerHTML = children.map(c => {
-    const theme = CHILD_COLOR_MAP[c.color] || CHILD_COLOR_MAP.blue;
-    const gradeStr = c.grade ? `・${escapeHtml(c.grade)}` : '';
+    const isGirl = (c.icon === '👧' || c.color === 'pink');
+    const displayIcon = isGirl ? '👧' : '👦';
+    const gradeStr = c.grade ? ` (${escapeHtml(c.grade)})` : '';
+    const badgeBg = isGirl ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-sky-50 text-sky-700 border-sky-200';
+
     return `
-      <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200 shadow-2xs">
+      <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200 shadow-2xs">
         <div class="flex items-center gap-2 min-w-0">
-          <span class="text-base flex-shrink-0">${c.icon || '👶'}</span>
+          <span class="text-lg flex-shrink-0">${displayIcon}</span>
           <div class="min-w-0">
-            <span class="font-bold text-xs text-stone-900">${escapeHtml(c.name)}</span>
-            <span class="text-[10px] text-stone-500 font-medium">${gradeStr}</span>
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-xs text-stone-900 truncate">${escapeHtml(c.name)}</span>
+              <span class="px-1.5 py-0.2 rounded-md text-[10px] font-bold border ${badgeBg}">${isGirl ? '女の子' : '男の子'}</span>
+            </div>
+            ${c.grade ? `<p class="text-[10px] text-stone-500 font-medium">${escapeHtml(c.grade)}</p>` : ''}
           </div>
         </div>
-        <button type="button" onclick="deleteChildFromSettings('${c.id}')" class="w-6 h-6 rounded-lg bg-stone-100 hover:bg-rose-50 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs font-bold transition" title="削除">
-          ✕
-        </button>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <button type="button" onclick="editChildInSettings('${c.id}')" class="px-2 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold transition flex items-center gap-0.5" title="設定を変更">
+            <span>✏️</span> <span>変更</span>
+          </button>
+          <button type="button" onclick="deleteChildFromSettings('${c.id}')" class="w-7 h-7 rounded-lg bg-stone-100 hover:bg-rose-50 text-stone-400 hover:text-rose-600 flex items-center justify-center text-xs font-bold transition" title="削除">
+            ✕
+          </button>
+        </div>
       </div>
     `;
   }).join('');
 }
 
-function addNewChildFromSettings() {
+function editChildInSettings(childId) {
+  const child = DB.getChildById(childId);
+  if (!child) return;
+
+  const idInput = document.getElementById('editingChildId');
   const nameInput = document.getElementById('newChildName');
   const gradeInput = document.getElementById('newChildGrade');
-  const iconInput = document.getElementById('newChildIcon');
-  const colorInput = document.getElementById('newChildColor');
+
+  if (idInput) idInput.value = child.id;
+  if (nameInput) nameInput.value = child.name || '';
+  if (gradeInput) gradeInput.value = child.grade || '';
+
+  const isGirl = (child.icon === '👧' || child.color === 'pink');
+  const gender = isGirl ? '👧' : '👦';
+  const radios = document.getElementsByName('childGenderRadio');
+  radios.forEach(r => {
+    r.checked = (r.value === gender);
+  });
+
+  const titleEl = document.getElementById('childFormTitle');
+  if (titleEl) titleEl.innerText = `✏️ 「${child.name}」の設定を変更`;
+
+  const cancelBtn = document.getElementById('childFormCancelBtn');
+  if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+  const submitBtn = document.getElementById('childFormSubmitBtn');
+  if (submitBtn) {
+    submitBtn.innerHTML = '<span>💾 変更を保存する</span>';
+    submitBtn.className = 'w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center justify-center gap-1';
+  }
+
+  nameInput.focus();
+}
+
+function resetChildForm() {
+  const idInput = document.getElementById('editingChildId');
+  const nameInput = document.getElementById('newChildName');
+  const gradeInput = document.getElementById('newChildGrade');
+
+  if (idInput) idInput.value = '';
+  if (nameInput) nameInput.value = '';
+  if (gradeInput) gradeInput.value = '';
+
+  const radios = document.getElementsByName('childGenderRadio');
+  radios.forEach(r => {
+    r.checked = (r.value === '👦');
+  });
+
+  const titleEl = document.getElementById('childFormTitle');
+  if (titleEl) titleEl.innerText = '＋ 新しいお子さんを追加';
+
+  const cancelBtn = document.getElementById('childFormCancelBtn');
+  if (cancelBtn) cancelBtn.classList.add('hidden');
+
+  const submitBtn = document.getElementById('childFormSubmitBtn');
+  if (submitBtn) {
+    submitBtn.innerHTML = '<span>＋ お子さんを追加</span>';
+    submitBtn.className = 'w-full py-2.5 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center justify-center gap-1';
+  }
+}
+
+function saveChildFromSettings() {
+  const editingId = (document.getElementById('editingChildId').value || '').trim();
+  const nameInput = document.getElementById('newChildName');
+  const gradeInput = document.getElementById('newChildGrade');
 
   const name = (nameInput.value || '').trim();
   if (!name) {
@@ -1918,30 +1994,50 @@ function addNewChildFromSettings() {
     return;
   }
 
-  const newChild = {
+  let selectedGender = '👦';
+  const radios = document.getElementsByName('childGenderRadio');
+  radios.forEach(r => {
+    if (r.checked) selectedGender = r.value;
+  });
+
+  const color = (selectedGender === '👧') ? 'pink' : 'blue';
+
+  const childData = {
     name: name,
     grade: (gradeInput.value || '').trim(),
-    icon: iconInput.value || '👶',
-    color: colorInput.value || 'blue'
+    icon: selectedGender,
+    color: color
   };
 
-  DB.saveChild(newChild);
-  nameInput.value = '';
-  gradeInput.value = '';
+  if (editingId) {
+    childData.id = editingId;
+  }
+
+  DB.saveChild(childData);
+  resetChildForm();
   renderSettingsChildren();
   renderChildTabs();
+  renderHomePage();
 }
 
 function deleteChildFromSettings(childId) {
-  if (!confirm('このお子さんの登録を削除しますか？')) return;
+  const child = DB.getChildById(childId);
+  const name = child ? child.name : 'このお子さん';
+  if (!confirm(`「${name}」の登録を削除しますか？`)) return;
+
   DB.deleteChild(childId);
   if (activeChildId === childId) {
     activeChildId = 'all';
+  }
+  const editId = (document.getElementById('editingChildId').value || '').trim();
+  if (editId === childId) {
+    resetChildForm();
   }
   renderSettingsChildren();
   renderChildTabs();
   renderHomePage();
 }
+
 
 
 

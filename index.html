@@ -11,7 +11,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="./style.css?v=20260930_v22">
+  <link rel="stylesheet" href="./style.css?v=20260930_v23">
   <link rel="manifest" href="./manifest.json">
   
   <!-- iOS Safari PWA / WebClip Settings -->
@@ -458,54 +458,57 @@
           </div>
 
                     <!-- 👶 お子さんの登録・管理 -->
-          <div class="pt-2 border-t border-stone-100 space-y-2">
+          <div class="pt-2 border-t border-stone-100 space-y-2.5">
             <div class="flex items-center justify-between">
               <label class="font-bold text-stone-800 text-[11px] flex items-center gap-1">
-                <span>👶 お子さんの登録・管理</span>
+                <span>👶 お子さんの登録・変更</span>
               </label>
-              <span class="text-[10px] text-stone-400 font-medium">（兄弟・姉妹を登録）</span>
+              <span class="text-[10px] text-stone-400 font-medium">（兄弟・姉妹の管理）</span>
             </div>
 
             <!-- お子さん一覧 -->
             <div id="settingsChildrenList" class="space-y-1.5 max-h-36 overflow-y-auto pr-0.5"></div>
 
-            <!-- 新規お子さん追加ボックス -->
-            <div class="p-2.5 rounded-xl bg-stone-50 border border-stone-200 space-y-2">
-              <p class="text-[10px] font-bold text-stone-600">＋ 新しいお子さんを追加</p>
+            <!-- お子さん追加・変更フォーム（男の子・女の子の2択） -->
+            <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <p id="childFormTitle" class="text-[11px] font-bold text-stone-700">＋ 新しいお子さんを追加</p>
+                <button type="button" id="childFormCancelBtn" onclick="resetChildForm()" class="hidden text-[10px] text-stone-500 font-bold hover:underline">キャンセル</button>
+              </div>
+
+              <input type="hidden" id="editingChildId" value="">
+
+              <!-- 性別選択（男の子 / 女の子 の2択） -->
+              <div>
+                <label class="text-[10px] text-stone-500 font-bold block mb-1">性別</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="flex items-center justify-center gap-1.5 p-2 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-sky-300 has-checked:border-sky-500 has-checked:bg-sky-50 has-checked:text-sky-800 text-xs font-bold transition shadow-2xs">
+                    <input type="radio" name="childGenderRadio" value="👦" checked class="hidden" onchange="handleChildGenderChange('👦')">
+                    <span>👦 男の子</span>
+                  </label>
+                  <label class="flex items-center justify-center gap-1.5 p-2 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-rose-300 has-checked:border-rose-500 has-checked:bg-rose-50 has-checked:text-rose-800 text-xs font-bold transition shadow-2xs">
+                    <input type="radio" name="childGenderRadio" value="👧" class="hidden" onchange="handleChildGenderChange('👧')">
+                    <span>👧 女の子</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- お名前 ＆ 学年 -->
               <div class="grid grid-cols-12 gap-1.5">
-                <div class="col-span-3">
-                  <select id="newChildIcon" class="w-full p-1.5 bg-white border border-stone-200 rounded-lg text-xs font-bold">
-                    <option value="👦">👦 男</option>
-                    <option value="👧">👧 女</option>
-                    <option value="👶">👶 赤</option>
-                    <option value="🧑">🧑 子</option>
-                    <option value="🎒">🎒 生</option>
-                    <option value="🌟">🌟 星</option>
-                    <option value="⚽">⚽ 球</option>
-                  </select>
+                <div class="col-span-7">
+                  <label class="text-[10px] text-stone-500 font-bold block mb-0.5">お名前 <span class="text-rose-500">*</span></label>
+                  <input type="text" id="newChildName" placeholder="例: 太郎" class="w-full p-2 bg-white border border-stone-200 rounded-xl text-xs font-bold focus:outline-none focus:border-stone-400">
                 </div>
                 <div class="col-span-5">
-                  <input type="text" id="newChildName" placeholder="名前(例:太郎)" class="w-full p-1.5 bg-white border border-stone-200 rounded-lg text-xs font-bold">
-                </div>
-                <div class="col-span-4">
-                  <input type="text" id="newChildGrade" placeholder="学年(G3,K2)" class="w-full p-1.5 bg-white border border-stone-200 rounded-lg text-xs font-medium">
+                  <label class="text-[10px] text-stone-500 font-bold block mb-0.5">学年・クラス</label>
+                  <input type="text" id="newChildGrade" placeholder="例: G3, 年中" class="w-full p-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:outline-none focus:border-stone-400">
                 </div>
               </div>
-              <div class="flex items-center justify-between gap-2 pt-0.5">
-                <div class="flex items-center gap-1">
-                  <span class="text-[10px] text-stone-500 font-bold">色:</span>
-                  <select id="newChildColor" class="p-1 bg-white border border-stone-200 rounded-lg text-[10px] font-bold">
-                    <option value="blue">🔵 青 (Blue)</option>
-                    <option value="pink">🌸 ピンク (Pink)</option>
-                    <option value="emerald">🍀 緑 (Green)</option>
-                    <option value="amber">🍊 オレンジ (Orange)</option>
-                    <option value="purple">💜 紫 (Purple)</option>
-                  </select>
-                </div>
-                <button type="button" onclick="addNewChildFromSettings()" class="px-3 py-1 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white rounded-lg text-[11px] font-bold shadow-xs transition">
-                  ＋ 追加
-                </button>
-              </div>
+
+              <!-- 登録・更新ボタン -->
+              <button type="button" id="childFormSubmitBtn" onclick="saveChildFromSettings()" class="w-full py-2.5 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center justify-center gap-1">
+                <span>＋ お子さんを追加</span>
+              </button>
             </div>
           </div>
 
@@ -542,6 +545,6 @@
 
   </div>
 
-  <script src="./app.js?v=20260930_v22"></script>
+  <script src="./app.js?v=20260930_v23"></script>
 </body>
 </html>
