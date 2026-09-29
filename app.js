@@ -2073,9 +2073,30 @@ function openSettingsModal(tab) {
   document.getElementById('settingsModal').classList.remove('hidden');
 }
 
-function handleChildGenderChange(gender) {
-  // Radio change handler for reactive UI
+function setChildGenderForm(gender) {
+  const input = document.getElementById('childFormGender');
+  if (input) input.value = gender;
+
+  const btnBoy = document.getElementById('genderBtnBoy');
+  const btnGirl = document.getElementById('genderBtnGirl');
+
+  if (btnBoy && btnGirl) {
+    if (gender === '👦') {
+      btnBoy.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border-2 border-sky-600 bg-sky-500 text-white font-black shadow-md ring-2 ring-sky-200 text-xs transition scale-[1.02] cursor-pointer';
+      btnBoy.innerHTML = '<span>👦 男の子</span> <span class="bg-white/25 px-1.5 py-0.5 rounded-full text-[9px] font-bold">✓ 選択中</span>';
+
+      btnGirl.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-stone-200 bg-stone-100 text-stone-500 font-medium hover:bg-stone-200 text-xs transition cursor-pointer opacity-70';
+      btnGirl.innerHTML = '<span>👧 女の子</span>';
+    } else {
+      btnGirl.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border-2 border-rose-600 bg-rose-500 text-white font-black shadow-md ring-2 ring-rose-200 text-xs transition scale-[1.02] cursor-pointer';
+      btnGirl.innerHTML = '<span>👧 女の子</span> <span class="bg-white/25 px-1.5 py-0.5 rounded-full text-[9px] font-bold">✓ 選択中</span>';
+
+      btnBoy.className = 'flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-stone-200 bg-stone-100 text-stone-500 font-medium hover:bg-stone-200 text-xs transition cursor-pointer opacity-70';
+      btnBoy.innerHTML = '<span>👦 男の子</span>';
+    }
+  }
 }
+
 
 function renderSettingsChildren() {
   const container = document.getElementById('settingsChildrenList');
@@ -2134,11 +2155,7 @@ function editChildInSettings(childId) {
   if (gradeInput) gradeInput.value = child.grade || '';
 
   const isGirl = (child.icon === '👧' || child.color === 'pink');
-  const gender = isGirl ? '👧' : '👦';
-  const radios = document.getElementsByName('childGenderRadio');
-  radios.forEach(r => {
-    r.checked = (r.value === gender);
-  });
+  setChildGenderForm(isGirl ? '👧' : '👦');
 
   const titleEl = document.getElementById('childFormTitle');
   if (titleEl) titleEl.innerText = `✏️ 「${child.name}」の設定を変更`;
@@ -2164,10 +2181,7 @@ function resetChildForm() {
   if (nameInput) nameInput.value = '';
   if (gradeInput) gradeInput.value = '';
 
-  const radios = document.getElementsByName('childGenderRadio');
-  radios.forEach(r => {
-    r.checked = (r.value === '👦');
-  });
+  setChildGenderForm('👦');
 
   const titleEl = document.getElementById('childFormTitle');
   if (titleEl) titleEl.innerText = '＋ 新しいお子さんを追加';
@@ -2194,11 +2208,8 @@ function saveChildFromSettings() {
     return;
   }
 
-  let selectedGender = '👦';
-  const radios = document.getElementsByName('childGenderRadio');
-  radios.forEach(r => {
-    if (r.checked) selectedGender = r.value;
-  });
+  const genderInput = document.getElementById('childFormGender');
+  const selectedGender = (genderInput ? genderInput.value : '👦') || '👦';
 
   const color = (selectedGender === '👧') ? 'pink' : 'blue';
 

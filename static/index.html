@@ -11,7 +11,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="./style.css?v=20260930_v24">
+  <link rel="stylesheet" href="./style.css?v=20260930_v25">
   <link rel="manifest" href="./manifest.json">
   
   <!-- iOS Safari PWA / WebClip Settings -->
@@ -471,18 +471,17 @@
 
               <input type="hidden" id="editingChildId" value="">
 
-              <!-- 性別選択（男の子 / 女の子 の2択） -->
+              <!-- 性別選択（男の子 / 女の子 の2択 - 選択中がひと目で分かるボタンスタイル） -->
               <div>
-                <label class="text-[10px] text-stone-500 font-bold block mb-1">性別</label>
+                <label class="text-[10px] text-stone-600 font-bold block mb-1">性別 <span class="text-rose-500">*</span></label>
+                <input type="hidden" id="childFormGender" value="👦">
                 <div class="grid grid-cols-2 gap-2">
-                  <label class="flex items-center justify-center gap-1.5 p-2 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-sky-300 has-checked:border-sky-500 has-checked:bg-sky-50 has-checked:text-sky-800 text-xs font-bold transition shadow-2xs">
-                    <input type="radio" name="childGenderRadio" value="👦" checked class="hidden" onchange="handleChildGenderChange('👦')">
-                    <span>👦 男の子</span>
-                  </label>
-                  <label class="flex items-center justify-center gap-1.5 p-2 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-rose-300 has-checked:border-rose-500 has-checked:bg-rose-50 has-checked:text-rose-800 text-xs font-bold transition shadow-2xs">
-                    <input type="radio" name="childGenderRadio" value="👧" class="hidden" onchange="handleChildGenderChange('👧')">
+                  <button type="button" id="genderBtnBoy" onclick="setChildGenderForm('👦')" class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border-2 border-sky-600 bg-sky-500 text-white font-black shadow-md ring-2 ring-sky-200 text-xs transition scale-[1.02] cursor-pointer">
+                    <span>👦 男の子</span> <span class="bg-white/25 px-1.5 py-0.5 rounded-full text-[9px] font-bold">✓ 選択中</span>
+                  </button>
+                  <button type="button" id="genderBtnGirl" onclick="setChildGenderForm('👧')" class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-stone-200 bg-stone-100 text-stone-500 font-medium hover:bg-stone-200 text-xs transition cursor-pointer opacity-70">
                     <span>👧 女の子</span>
-                  </label>
+                  </button>
                 </div>
               </div>
 
@@ -559,6 +558,6 @@
 
   </div>
 
-  <script src="./app.js?v=20260930_v24"></script>
+  <script src="./app.js?v=20260930_v25"></script>
 </body>
 </html>
