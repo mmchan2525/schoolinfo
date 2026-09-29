@@ -2095,6 +2095,7 @@ function openSettingsModal(tab) {
   renderSettingsChildren();
   renderSettingsTags();
   document.getElementById('settingsModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
 }
 
 function setChildGenderForm(gender) {
@@ -2314,6 +2315,7 @@ function deleteChildFromSettings(childId) {
 
 function closeSettingsModal() {
   document.getElementById('settingsModal').classList.add('hidden');
+  document.body.style.overflow = '';
 }
 
 function saveSettings(e) {

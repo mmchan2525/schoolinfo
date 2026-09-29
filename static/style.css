@@ -254,3 +254,24 @@ html, body {
   object-fit: cover !important;
   display: block !important;
 }
+
+/* 📱 モバイル・スマホ表示最適化 ＆ スムーズスクロール */
+@media screen and (max-width: 768px) {
+  /* iOS Safariで入力時に画面全体が拡大ズームされるのを防止 */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+.modal-sheet-dialog {
+  max-height: 90vh !important;
+  max-height: 90dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.modal-scroll-body {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
