@@ -544,7 +544,11 @@ function renderUpcomingEvents(posts) {
   const container = document.getElementById('upcomingEventsList');
   if (!container) return;
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${y}-${m}-${d}`;
   const upcoming = posts
     .filter(p => p.date && p.date >= todayStr)
     .sort((a, b) => (a.date > b.date ? 1 : -1))
