@@ -2627,3 +2627,65 @@ function updateLightboxView() {
   }
 }
 
+// --- 🔄 最新版アプリの読み込み（キャッシュクリア ＆ 強制再読込） ---
+async function reloadAppLatest() {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 text-center select-none animate-fade-in';
+  overlay.innerHTML = `
+    <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-400 flex items-center justify-center text-3xl shadow-xl border-2 border-white/40 mb-4 animate-bounce">
+      🔄
+    </div>
+    <h3 class="text-base font-black mb-1 tracking-wide">最新版を読み込んでいます</h3>
+    <p class="text-xs text-rose-200 font-medium">キャッシュをクリアして最新プログラムを取得中...</p>
+    <div class="mt-4 flex items-center gap-2 text-[11px] text-stone-300 bg-white/10 px-3 py-1.5 rounded-full border border-white/20 font-mono">
+      <span>otayori-translate v1.0</span>
+      <span>•</span>
+      <span>chan_meg</span>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  try {
+    // 1. Service Worker 登録解除
+    if ('serviceWorker' in navigator) {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      } catch (e) {
+        console.warn('SW unregister error:', e);
+      }
+    }
+
+    // 2. CacheStorage (キャッシュストレージ) を完全クリア
+    if ('caches' in window) {
+      try {
+        const cacheKeys = await caches.keys();
+        for (const key of cacheKeys) {
+          await caches.delete(key);
+        }
+      } catch (e) {
+        console.warn('Caches delete error:', e);
+      }
+    }
+
+    // 3. セッションストレージ初期化 (localStorageのおたより・お子さん・APIキーは安全に保持)
+    try {
+      sessionStorage.clear();
+    } catch (e) {}
+
+  } catch (err) {
+    console.error('Update reload failed:', err);
+  }
+
+  // 4. タイムスタンプパラメータを付与してキャッシュを回避し強制リロード
+  setTimeout(() => {
+    const timestamp = Date.now();
+    const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+    const currentHash = window.location.hash || '';
+    window.location.replace(`${cleanUrl}?v=${timestamp}${currentHash}`);
+  }, 500);
+}
+
+

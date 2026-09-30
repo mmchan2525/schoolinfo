@@ -31,8 +31,8 @@
       <!-- M3 Top App Bar (Compact) -->
       <header class="px-4 py-3 flex items-center justify-between border-b border-stone-200/60 bg-white/90 backdrop-blur-md sticky top-0 z-30 shadow-xs">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-400 text-white flex items-center justify-center text-xl shadow-sm border border-white">
-            📝
+          <div class="w-9 h-9 rounded-xl overflow-hidden shadow-sm border border-rose-200 bg-rose-50 flex-shrink-0">
+            <img src="./assets/avatar.jpg" class="w-full h-full object-cover object-top" alt="chan_meg">
           </div>
           <div>
             <h1 class="font-black text-base tracking-tight text-stone-900 flex items-center gap-1">
@@ -48,6 +48,10 @@
         </div>
         
         <div class="flex items-center gap-1.5">
+          <!-- 🔄 最新版を読み込むボタン (キャッシュクリア ＆ 強制再読込) -->
+          <button type="button" onclick="reloadAppLatest()" title="最新版を読み込む（アプリを更新）" class="w-9 h-9 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 active:scale-95 transition flex items-center justify-center text-sm font-bold shadow-xs">
+            🔄
+          </button>
           <!-- ⚙️ 設定ボタン -->
           <a href="#/settings" title="設定" class="w-9 h-9 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 transition flex items-center justify-center text-base font-bold shadow-xs">
             ⚙️
@@ -440,6 +444,34 @@
       </header>
 
       <main class="p-4 space-y-4 flex-1 pb-28">
+        <!-- 👩‍💻 アプリ情報 ＆ 作成者 ＆ 最新版読込カード -->
+        <div class="p-4 bg-gradient-to-br from-rose-50/90 via-pink-50/60 to-white rounded-2xl border border-rose-200/90 space-y-3 shadow-xs">
+          <div class="flex items-center gap-3.5">
+            <img src="./assets/chan_meg.jpg" class="w-16 h-20 rounded-2xl object-cover object-top shadow-md border-2 border-white ring-2 ring-rose-200 flex-shrink-0" alt="chan_meg">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5 mb-1">
+                <span class="text-[11px] font-black text-rose-950">作成者:</span>
+                <span class="text-xs font-black px-2 py-0.5 rounded-full bg-rose-500 text-white shadow-2xs">chan_meg</span>
+              </div>
+              <p class="text-[11px] font-bold text-stone-700">
+                システム: <span class="font-mono text-rose-600 font-extrabold">otayori-translate v1.0</span>
+              </p>
+              <p class="text-[10px] text-stone-500 leading-tight mt-1">
+                学校のおたより翻訳・予定管理
+              </p>
+            </div>
+          </div>
+
+          <!-- 🔄 最新版を読み込むボタン -->
+          <button type="button" onclick="reloadAppLatest()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:opacity-95 active:scale-[0.98] text-white font-black text-xs shadow-md shadow-rose-500/20 transition flex items-center justify-center gap-2 border border-white/40 cursor-pointer">
+            <span class="text-sm">🔄</span>
+            <span>最新版を読み込む（アプリを更新）</span>
+          </button>
+          <p class="text-[9.5px] text-stone-400 text-center font-medium">
+            ※キャッシュを完全にクリアし、最新の更新プログラムを読み込みます。
+          </p>
+        </div>
+
         <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-4 text-xs">
           
           <!-- ① 保護者のお名前 -->

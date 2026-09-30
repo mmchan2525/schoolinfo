@@ -5,7 +5,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, HRFlowable, Image as ReportLabImage
 )
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -177,9 +177,25 @@ def create_manual():
     # ==========================================
     # PAGE 1: 表紙 ＆ はじめに・クイックスタート
     # ==========================================
-    story.append(Paragraph("School Info ｜ 取扱説明書 ＆ 活用マニュアル", style_title))
-    story.append(Paragraph("学校・幼稚園・インターナショナルスクールのおたより翻訳＆予定管理アプリ", style_subtitle))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=C_PRIMARY, spaceAfter=8))
+    title_box = [
+        Paragraph("School Info ｜ 取扱説明書 ＆ 活用マニュアル", style_title),
+        Paragraph("学校・幼稚園のおたより翻訳＆予定管理 ｜ 作成者: <b>chan_meg</b> (otayori-translate v1.0)", style_subtitle)
+    ]
+    if os.path.exists("assets/avatar.jpg"):
+        img_avatar = ReportLabImage("assets/avatar.jpg", width=16 * mm, height=16 * mm)
+        t_title = Table([[img_avatar, title_box]], colWidths=[20 * mm, 158 * mm])
+        t_title.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        story.append(t_title)
+    else:
+        story.append(title_box[0])
+        story.append(title_box[1])
+    story.append(HRFlowable(width="100%", thickness=1.5, color=C_PRIMARY, spaceAfter=6, spaceBefore=3))
 
     story.append(section_header("1. アプリの概要 ＆ 主な特徴"))
     story.append(Spacer(1, 2 * mm))
@@ -458,9 +474,13 @@ def create_manual():
         ],
         [
             Paragraph("<b>⑤ データのバックアップ ＆ 復元</b>", style_body_bold),
-            Paragraph("・<b>JSON保存</b>: 登録したすべてのおたより・お子さん設定をJSONファイルとしてスマホ/PCに保存します。<br/>"
-                      "・<b>復元</b>: 保存したJSONファイルを選択すると、別のスマホやPCへデータをそのまま移行・復元できます。<br/>"
+            Paragraph("・<b>JSON保存</b>: 登録したすべてのおたより・お子さん設定をJSONファイルとして保存します。<br/>"
+                      "・<b>復元</b>: 保存したJSONファイルを選択すると、別端末へデータをそのまま移行できます。<br/>"
                       "・<b>全削除・初期化</b>: すべてのデータをクリアして初期状態に戻します。", style_body)
+        ],
+        [
+            Paragraph("<b>⑥ 最新版の読取 ＆ キャッシュクリア</b>", style_body_bold),
+            Paragraph("「<b>最新版を読み込む</b>」ボタン（または画面右上の [更新] ボタン）を押すと、ブラウザキャッシュを完全クリアして最新の更新プログラムを再取得します。（※登録データは安全に保持されます）", style_body)
         ]
     ]
     t_set = Table(settings_data, colWidths=[48 * mm, 130 * mm])
@@ -469,16 +489,16 @@ def create_manual():
         ('BOX', (0, 0), (-1, -1), 0.5, C_BORDER),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, C_BORDER),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
     story.append(t_set)
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2.5 * mm))
 
     story.append(section_header("8. スマートフォンでアプリのように使う方法（PWA）", C_DARK))
-    story.append(Spacer(1, 2 * mm))
+    story.append(Spacer(1, 1.5 * mm))
 
     pwa_data = [
         [
@@ -501,17 +521,17 @@ def create_manual():
         ('BOX', (0, 0), (-1, -1), 0.5, C_BORDER),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, C_BORDER),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
     story.append(t_pwa)
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2.5 * mm))
 
     story.append(info_box(
-        "最新の更新がスマホに反映されない場合（キャッシュクリア）",
-        "スマートフォンは通信量を抑えるために以前の画面を一時保存する性質があります。新機能が画面に出ない場合は、画面の一番上を下に引っ張って離す（プルダウン更新）か、Safariのプライベートブラウズモードで一度開いてみてください。",
+        "最新の更新がスマホに反映されない場合（最新版を読み込むボタン）",
+        "スマートフォンは通信量を抑えるために以前の画面を一時保存する性質があります。最新機能が画面に出ない場合は、画面右上の [更新] または設定画面の「最新版を読み込む」ボタンを一度タップしてください。",
         bg=colors.HexColor('#FEF3C7'),
         border_color=C_SECONDARY,
         icon_label="【ヒント】"
