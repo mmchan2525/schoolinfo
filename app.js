@@ -276,8 +276,8 @@ const DB = {
       // 容量超過時：古い投稿の写真データを軽量化して確実に保存
       try {
         const lightweightPosts = posts.map((p, idx) => {
-          if (idx >= 2 && p.image_url && p.image_url.length > 50000) {
-            return { ...p, image_url: null };
+          if (idx >= 3) {
+            return { ...p, image_url: null, images: [] };
           }
           return p;
         });
@@ -301,6 +301,11 @@ const DB = {
     if (!postData.created_at) {
       postData.created_at = new Date().toISOString();
     }
+    const imgs = (Array.isArray(postData.images) && postData.images.length > 0)
+      ? postData.images
+      : (postData.image_url ? [postData.image_url] : []);
+    postData.images = imgs;
+    postData.image_url = imgs[0] || null;
     posts.unshift(postData);
     this.savePosts(posts);
     return postData;
@@ -310,6 +315,13 @@ const DB = {
     const posts = this.getPosts();
     const idx = posts.findIndex(p => String(p.id) === String(id));
     if (idx === -1) return null;
+    if (updateData.images !== undefined || updateData.image_url !== undefined) {
+      const imgs = (Array.isArray(updateData.images) && updateData.images.length > 0)
+        ? updateData.images
+        : (updateData.image_url ? [updateData.image_url] : []);
+      updateData.images = imgs;
+      updateData.image_url = imgs[0] || null;
+    }
     posts[idx] = { ...posts[idx], ...updateData };
     this.savePosts(posts);
     return posts[idx];
@@ -627,7 +639,11 @@ function renderPostsList(posts) {
   container.innerHTML = posts.map(p => {
     const rawTags = (p.tags || []).join(',');
     const pDateStr = p.date ? `📅 ${p.date.replace(/-/g, '/')}` : '';
-    const hasRealImage = Boolean(p.image_url && !p.image_url.includes('no_image.svg'));
+    const pImages = (Array.isArray(p.images) && p.images.length > 0)
+      ? p.images
+      : (p.image_url && !p.image_url.includes('no_image.svg') ? [p.image_url] : []);
+    const hasRealImage = pImages.length > 0;
+    const thumbUrl = hasRealImage ? pImages[0] : '';
     const summaryText = p.summary || p.text_translation || p.image_translation || p.title;
 
     const tagsHtml = (normalizeTags(p.tags, summaryText)).map(t => getTagBadgeHtml(t)).join('');
@@ -639,7 +655,7 @@ function renderPostsList(posts) {
       ? `<span class="text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md font-bold text-[10px]">⚠️ 締切: ${p.deadline.replace(/-/g, '/')}</span>`
       : '';
     const imgBadge = hasRealImage
-      ? `<span class="text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded-md font-bold text-[10px]">🖼️ 写真あり</span>`
+      ? `<span class="text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded-md font-bold text-[10px]">🖼️ 写真 ${pImages.length > 1 ? pImages.length + '枚' : 'あり'}</span>`
       : '';
 
     const childBadge = (p.child_id && p.child_id !== 'all') ? getChildBadgeHtml(p.child_id) : '';
@@ -658,8 +674,13 @@ function renderPostsList(posts) {
         <!-- 中部：サムネイル ＋ テキスト（横並びレイアウト） -->
         <div class="flex items-start gap-3">
           ${hasRealImage ? `
-            <div class="card-thumb-box" style="width:48px !important;height:48px !important;min-width:48px !important;min-height:48px !important;max-width:48px !important;max-height:48px !important;flex-shrink:0 !important;border-radius:12px;overflow:hidden;background:#F8F5EE;border:1px solid #EAE3D9;display:flex;align-items:center;justify-content:center;">
-              <img src="${p.image_url}" class="card-thumb-img" style="width:48px !important;height:48px !important;max-width:48px !important;max-height:48px !important;object-fit:cover !important;display:block;" alt="プリント" onerror="this.parentElement.style.display='none'">
+            <div class="card-thumb-box relative" style="width:48px !important;height:48px !important;min-width:48px !important;min-height:48px !important;max-width:48px !important;max-height:48px !important;flex-shrink:0 !important;border-radius:12px;overflow:hidden;background:#F8F5EE;border:1px solid #EAE3D9;display:flex;align-items:center;justify-content:center;">
+              <img src="${thumbUrl}" class="card-thumb-img" style="width:48px !important;height:48px !important;max-width:48px !important;max-height:48px !important;object-fit:cover !important;display:block;" alt="プリント" onerror="this.parentElement.style.display='none'">
+              ${pImages.length > 1 ? `
+                <span class="absolute bottom-0 right-0 bg-black/70 text-white font-extrabold text-[8px] px-1 py-0.2 rounded-tl-md leading-tight">
+                  +${pImages.length - 1}
+                </span>
+              ` : ''}
             </div>
           ` : ''}
           <div class="flex-1 min-w-0">
@@ -748,7 +769,12 @@ function renderDetailPage(postId) {
   // 翻訳本文 (text_translation / image_translation / summary を統合)
   const transText = formatWithDateDividers((post.text_translation || post.image_translation || (post.summary && post.summary !== post.title ? post.summary : '') || '').trim());
   const rawText = (post.text_raw || post.image_raw || '').trim();
-  const imgUrl = (post.image_url || '').trim();
+
+  // 写真配列の正規化
+  const postImages = (Array.isArray(post.images) && post.images.length > 0)
+    ? post.images
+    : (post.image_url && !post.image_url.includes('no_image.svg') ? [post.image_url] : []);
+  currentDetailPageImages = postImages;
 
   // お子さん ＆ タグHTML
   const childBadge = (post.child_id && post.child_id !== 'all') ? getChildBadgeHtml(post.child_id) : '';
@@ -822,17 +848,44 @@ function renderDetailPage(postId) {
     </div>
   ` : '');
 
-  // ② 添付写真カード
-  const imageCardHtml = imgUrl ? `
-    <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-2 shadow-xs">
-      <h4 class="text-xs font-bold text-sky-950 flex items-center gap-1">
-        <span>🖼️ 添付プリント写真</span>
-      </h4>
-      <div class="w-full rounded-xl bg-white overflow-hidden border border-sky-200 flex items-center justify-center p-2">
-        <img src="${imgUrl}" class="max-h-72 w-auto object-contain rounded-lg" alt="プリント" onerror="this.style.display='none'">
+  // ② 添付写真カード (1枚または複数枚フォトギャラリー)
+  let imageCardHtml = '';
+  if (postImages.length === 1) {
+    imageCardHtml = `
+      <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-2 shadow-xs">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-sky-950 flex items-center gap-1">
+            <span>🖼️ 添付プリント写真</span>
+          </h4>
+          <span class="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-full">タップで拡大</span>
+        </div>
+        <div class="w-full rounded-xl bg-white overflow-hidden border border-sky-200 flex items-center justify-center p-2 cursor-pointer group hover:border-sky-400 transition" onclick="openLightbox(currentDetailPageImages, 0)">
+          <img src="${escapeHtml(postImages[0])}" class="max-h-72 w-auto object-contain rounded-lg group-hover:scale-[1.01] transition" alt="プリント">
+        </div>
       </div>
-    </div>
-  ` : '';
+    `;
+  } else if (postImages.length > 1) {
+    imageCardHtml = `
+      <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-2.5 shadow-xs">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-sky-950 flex items-center gap-1">
+            <span>🖼️ 添付プリント写真 (${postImages.length}枚)</span>
+          </h4>
+          <span class="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-full">タップで拡大</span>
+        </div>
+        <div class="photo-gallery-grid">
+          ${postImages.map((imgUrl, idx) => `
+            <div class="gallery-photo-item shadow-2xs group" onclick="openLightbox(currentDetailPageImages, ${idx})">
+              <img src="${escapeHtml(imgUrl)}" alt="プリント写真 ${idx + 1}" loading="lazy">
+              <span class="absolute bottom-1 right-1 bg-black/65 text-white font-black text-[10px] px-1.5 py-0.2 rounded-md shadow-xs">
+                ${idx + 1} / ${postImages.length}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
 
   let shareText = `【おたより】${post.title}
 
@@ -970,14 +1023,12 @@ function selectEditPostChild(childId) {
 }
 
 // --- 新規追加画面 ---
-let newSelectedFile = null;
-let newUploadedImageUrl = null;
+let newUploadedImages = [];
 let newSelectedTags = ['English'];
 const ALL_TAGS = ['English', 'Math', 'Mandarin', 'event', 'その他'];
 
 function renderNewPage() {
-  newSelectedFile = null;
-  newUploadedImageUrl = null;
+  newUploadedImages = [];
   newSelectedTags = ['English'];
   newSelectedChildId = (activeChildId && activeChildId !== 'all') ? activeChildId : 'all';
   const childInput = document.getElementById('newPostChildId');
@@ -985,11 +1036,44 @@ function renderNewPage() {
   renderChildSelector('newChildSelectorContainer', newSelectedChildId, 'selectNewPostChild');
 
   document.getElementById('newRawTextInput').value = '';
-  document.getElementById('newSelectedFileName').classList.add('hidden');
+  renderNewImagesPreview();
+  const step2Container = document.getElementById('newStep2ImagesContainer');
+  if (step2Container) step2Container.innerHTML = '';
   document.getElementById('newLoadingBox').classList.add('hidden');
   document.getElementById('newResultForm').classList.add('hidden');
   renderNewTags();
   updateAiEngineStatusBanner();
+}
+
+function renderNewImagesPreview() {
+  const container = document.getElementById('newImagesPreviewContainer');
+  const listEl = document.getElementById('newImagesList');
+  const countEl = document.getElementById('newImagesCount');
+  if (!container || !listEl) return;
+
+  if (newUploadedImages.length === 0) {
+    container.classList.add('hidden');
+    listEl.innerHTML = '';
+    return;
+  }
+
+  container.classList.remove('hidden');
+  if (countEl) countEl.innerText = newUploadedImages.length;
+
+  listEl.innerHTML = newUploadedImages.map((imgUrl, idx) => `
+    <div class="relative w-20 h-20 rounded-xl overflow-hidden border border-stone-200 bg-white flex-shrink-0 shadow-2xs group">
+      <img src="${escapeHtml(imgUrl)}" class="w-full h-full object-cover cursor-pointer" alt="選択画像 ${idx + 1}" onclick="openLightbox(newUploadedImages, ${idx})">
+      <span class="absolute top-1 left-1 bg-black/65 text-white font-black text-[9px] px-1 rounded shadow-xs">#${idx + 1}</span>
+      <button type="button" onclick="removeNewImage(${idx})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 active:scale-90 text-white flex items-center justify-center text-[10px] font-bold shadow-xs transition" title="この写真を削除">
+        ✕
+      </button>
+    </div>
+  `).join('');
+}
+
+function removeNewImage(idx) {
+  newUploadedImages.splice(idx, 1);
+  renderNewImagesPreview();
 }
 
 function updateAiEngineStatusBanner() {
@@ -1098,23 +1182,24 @@ function compressImageFile(file, maxWidth = 1200, maxHeight = 1200, quality = 0.
 }
 
 async function handleNewFileChange(e) {
-  const file = e.target.files[0];
-  if (file) {
-    newSelectedFile = file;
-    const nameEl = document.getElementById('newSelectedFileNameText');
-    if (nameEl) nameEl.innerText = file.name;
-    const boxEl = document.getElementById('newSelectedFileName');
-    if (boxEl) boxEl.classList.remove('hidden');
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
 
-    // 即座に軽量画像へ圧縮変換
-    newUploadedImageUrl = await compressImageFile(file);
+  for (const file of files) {
+    const compressed = await compressImageFile(file);
+    if (compressed) {
+      newUploadedImages.push(compressed);
+    }
   }
+
+  renderNewImagesPreview();
+  e.target.value = '';
 }
 
 async function executeAIAnalyze() {
   const textVal = document.getElementById('newRawTextInput').value.trim();
-  if (!newSelectedFile && !textVal) {
-    alert('写真を選択するか、英語テキストを貼り付けてください。');
+  if (newUploadedImages.length === 0 && !textVal) {
+    alert('写真を選択・撮影するか、英語テキストを貼り付けてください。');
     return;
   }
 
@@ -1124,21 +1209,16 @@ async function executeAIAnalyze() {
   if (resultForm) resultForm.classList.add('hidden');
 
   try {
-    // 画像圧縮が未完了の場合は待機
-    if (newSelectedFile && !newUploadedImageUrl) {
-      newUploadedImageUrl = await compressImageFile(newSelectedFile);
-    }
-
     const settings = DB.getSettings();
     const apiKey = (settings.gemini_api_key || '').trim();
 
     let draft = null;
 
-        // 1. Gemini API Direct Call (ユーザー設定APIキーがある場合)
+    // 1. Gemini API Direct Call (ユーザー設定APIキーがある場合・複数画像一括送信)
     if (apiKey) {
-      console.log('Using Gemini API Direct Call with API Key...');
+      console.log(`Using Gemini API Direct Call with ${newUploadedImages.length} images...`);
       try {
-        draft = await callGeminiDirect(apiKey, newUploadedImageUrl, textVal);
+        draft = await callGeminiDirect(apiKey, newUploadedImages, textVal);
         if (draft) {
           console.log('✨ Gemini AI Direct analysis succeeded!');
         } else {
@@ -1156,13 +1236,13 @@ async function executeAIAnalyze() {
     // 2. クライアント側フォールバック翻訳（Google Translate + MyMemory + 高速OCR + 内蔵辞書）
     if (!draft) {
       console.log('Using Client-side Robust Multi-tier Translation Engine...');
-      draft = await clientSideTranslateEngine(textVal, newSelectedFile, newUploadedImageUrl);
+      draft = await clientSideTranslateEngine(textVal, newUploadedImages);
     }
 
     if (loadingBox) loadingBox.classList.add('hidden');
 
     if (draft) {
-      populateNewForm(draft, Boolean(textVal), Boolean(newSelectedFile || newUploadedImageUrl));
+      populateNewForm(draft, Boolean(textVal), newUploadedImages.length > 0);
     } else {
       // 最終安全フォールバック
       const fallbackDraft = {
@@ -1177,11 +1257,11 @@ async function executeAIAnalyze() {
         summary: textVal ? (await clientTranslate(textVal)) : "添付プリントを確認して登録",
         text_translation: textVal ? (await clientTranslate(textVal)) : null,
         text_raw: textVal || null,
-        image_translation: newUploadedImageUrl ? "添付プリントを確認して内容を登録できます" : null,
+        image_translation: newUploadedImages.length > 0 ? `添付写真（${newUploadedImages.length}枚）を確認して内容を登録できます` : null,
         image_raw: null,
-        tags: ["英語・UOI"]
+        tags: ["English"]
       };
-      populateNewForm(fallbackDraft, Boolean(textVal), Boolean(newSelectedFile || newUploadedImageUrl));
+      populateNewForm(fallbackDraft, Boolean(textVal), newUploadedImages.length > 0);
     }
   } catch (err) {
     if (loadingBox) loadingBox.classList.add('hidden');
@@ -1201,11 +1281,11 @@ async function executeAIAnalyze() {
       summary: textVal || "おたより内容",
       text_translation: textVal || null,
       text_raw: textVal || null,
-      image_translation: newUploadedImageUrl ? "添付写真あり" : null,
+      image_translation: newUploadedImages.length > 0 ? `添付写真（${newUploadedImages.length}枚）` : null,
       image_raw: null,
-      tags: ["英語・UOI"]
+      tags: ["English"]
     };
-    populateNewForm(safeDraft, Boolean(textVal), Boolean(newSelectedFile || newUploadedImageUrl));
+    populateNewForm(safeDraft, Boolean(textVal), newUploadedImages.length > 0);
   }
 }
 
@@ -1299,7 +1379,7 @@ async function getAvailableGeminiModels(apiKey) {
   return ['gemini-1.5-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-002', 'gemini-1.5-flash-001'];
 }
 
-async function callGeminiDirect(apiKey, b64Image, textContent) {
+async function callGeminiDirect(apiKey, b64Images, textContent) {
   lastGeminiErrorDetails = '';
   const models = await getAvailableGeminiModels(apiKey);
   console.log('Available Gemini Models for this API Key:', models);
@@ -1414,18 +1494,24 @@ tags に設定できる値は以下の5種類のみです（複数可）:
 
   const parts = [];
 
-  if (b64Image) {
-    const mimeMatch = b64Image.match(/^data:([^;]+);/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-    const rawB64 = b64Image.includes(',') ? b64Image.split(',')[1] : b64Image;
+  const imagesArray = Array.isArray(b64Images) ? b64Images : (b64Images ? [b64Images] : []);
+
+  if (imagesArray.length > 0) {
+    for (const b64 of imagesArray) {
+      if (!b64) continue;
+      const mimeMatch = b64.match(/^data:([^;]+);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const rawB64 = b64.includes(',') ? b64.split(',')[1] : b64;
+      parts.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: rawB64
+        }
+      });
+    }
+    const countNote = imagesArray.length > 1 ? `（全${imagesArray.length}枚のプリント写真）` : '';
     parts.push({
-      inlineData: {
-        mimeType: mimeType,
-        data: rawB64
-      }
-    });
-    parts.push({
-      text: systemPrompt + "\n\n添付のプリント画像を読み取り、上記の指示に従って指定のJSON形式のみで出力してください。"
+      text: systemPrompt + `\n\n添付のプリント画像${countNote}を順番に読み取り、全体の文脈をつなげて上記の指示に従って指定のJSON形式のみで出力してください。`
     });
   }
 
@@ -1488,7 +1574,7 @@ tags に設定できる値は以下の5種類のみです（複数可）:
 }
 
 // ② クライアント側フォールバック翻訳エンジン
-async function clientSideTranslateEngine(text, file, b64Image) {
+async function clientSideTranslateEngine(text, b64Images) {
   let textTrans = "";
   let imageRaw = "";
   let imageTrans = "";
@@ -1497,13 +1583,27 @@ async function clientSideTranslateEngine(text, file, b64Image) {
     textTrans = formatWithDateDividers(await clientTranslate(text));
   }
 
-  if (b64Image) {
-    console.log('Extracting text from image via client OCR...');
-    imageRaw = await clientOCR(b64Image);
+  const imagesArray = Array.isArray(b64Images) ? b64Images : (b64Images ? [b64Images] : []);
+
+  if (imagesArray.length > 0) {
+    console.log(`Extracting text from ${imagesArray.length} images via client OCR...`);
+    const ocrResults = [];
+    for (let i = 0; i < imagesArray.length; i++) {
+      const b64 = imagesArray[i];
+      const pageText = await clientOCR(b64);
+      if (pageText) {
+        if (imagesArray.length > 1) {
+          ocrResults.push(`--- 【${i + 1}枚目のプリント写真】 ---\n${pageText}`);
+        } else {
+          ocrResults.push(pageText);
+        }
+      }
+    }
+    imageRaw = ocrResults.join('\n\n');
     if (imageRaw) {
       imageTrans = formatWithDateDividers(await clientTranslate(imageRaw));
     } else {
-      imageTrans = "（添付写真あり・プリントの内容を確認してタイトルや持ち物を登録できます）";
+      imageTrans = `（添付写真${imagesArray.length}枚あり・プリントの内容を確認してタイトルや持ち物を登録できます）`;
     }
   }
 
@@ -1645,8 +1745,8 @@ async function clientSideTranslateEngine(text, file, b64Image) {
     summary: summaryJa,
     text_translation: text ? textTrans : null,
     text_raw: text || null,
-    image_translation: b64Image ? imageTrans : null,
-    image_raw: b64Image ? imageRaw : null,
+    image_translation: (imagesArray.length > 0) ? imageTrans : null,
+    image_raw: (imagesArray.length > 0) ? imageRaw : null,
     tags: tags
   };
 }
@@ -1815,7 +1915,7 @@ function populateNewForm(draft, hasTextInput, hasImageInput) {
   document.getElementById('newPostTitleEn').value = draft.title_en || '';
 
   const hasText = hasTextInput || Boolean(draft.text_translation) || Boolean(draft.text_raw);
-  const hasImage = hasImageInput || Boolean(draft.image_translation) || Boolean(draft.image_raw) || Boolean(newUploadedImageUrl);
+  const hasImage = hasImageInput || Boolean(draft.image_translation) || Boolean(draft.image_raw) || (newUploadedImages.length > 0);
 
   const textSection = document.getElementById('newTextMessageSection');
   if (hasText) {
@@ -1829,17 +1929,31 @@ function populateNewForm(draft, hasTextInput, hasImageInput) {
   }
 
   const imageSection = document.getElementById('newImageMessageSection');
+  const countEl = document.getElementById('newStep2ImagesCount');
+  const galleryEl = document.getElementById('newStep2ImagesContainer');
+
   if (hasImage) {
     imageSection.classList.remove('hidden');
     document.getElementById('newPostImageTranslation').value = formatWithDateDividers(draft.image_translation || '');
     document.getElementById('newPostImageRaw').value = draft.image_raw || '';
-    if (newUploadedImageUrl) {
-      document.getElementById('newPreviewImageEl').src = newUploadedImageUrl;
+    if (countEl) countEl.innerText = `${newUploadedImages.length}枚`;
+    if (galleryEl) {
+      if (newUploadedImages.length === 0) {
+        galleryEl.innerHTML = '';
+      } else {
+        galleryEl.innerHTML = newUploadedImages.map((imgUrl, idx) => `
+          <div class="relative w-24 h-24 rounded-xl overflow-hidden border border-sky-200 bg-white flex-shrink-0 shadow-2xs cursor-pointer group" onclick="openLightbox(newUploadedImages, ${idx})">
+            <img src="${escapeHtml(imgUrl)}" class="w-full h-full object-cover group-hover:scale-105 transition" alt="画像 ${idx + 1}">
+            <span class="absolute bottom-1 right-1 bg-black/60 text-white font-bold text-[9px] px-1 rounded">#${idx + 1}</span>
+          </div>
+        `).join('');
+      }
     }
   } else {
     imageSection.classList.add('hidden');
     document.getElementById('newPostImageTranslation').value = '';
     document.getElementById('newPostImageRaw').value = '';
+    if (galleryEl) galleryEl.innerHTML = '';
   }
 
   document.getElementById('newPostDate').value = draft.date || '';
@@ -1890,7 +2004,8 @@ function submitNewPost(e) {
     items: itemsArr,
     tags: (newSelectedTags && newSelectedTags.length > 0) ? normalizeTags(newSelectedTags) : ['その他'],
     child_id: document.getElementById('newPostChildId').value || newSelectedChildId || 'all',
-    image_url: newUploadedImageUrl
+    images: [...newUploadedImages],
+    image_url: newUploadedImages[0] || null
   };
 
   const saved = DB.addPost(postData);
@@ -1901,7 +2016,7 @@ function submitNewPost(e) {
 
 // --- 編集画面描画 ---
 let editPostId = null;
-let editUploadedImageUrl = null;
+let editUploadedImages = [];
 let editSelectedTags = [];
 
 function renderEditPage(postId) {
@@ -1912,7 +2027,10 @@ function renderEditPage(postId) {
   }
 
   editPostId = postId;
-  editUploadedImageUrl = post.image_url || null;
+  editUploadedImages = (post.images && Array.isArray(post.images) && post.images.length > 0)
+    ? [...post.images]
+    : (post.image_url && !post.image_url.includes('no_image.svg') ? [post.image_url] : []);
+  
   editSelectedTags = post.tags ? normalizeTags(post.tags) : ['その他'];
   editSelectedChildId = post.child_id || 'all';
   const editChildInput = document.getElementById('editPostChildId');
@@ -1939,16 +2057,35 @@ function renderEditPage(postId) {
   document.getElementById('editPostDeadlineDesc').value = post.deadline_description || '';
   document.getElementById('editPostItems').value = (post.items || []).join(', ');
 
-  const imgBox = document.getElementById('editImagePreviewBox');
-  const imgEl = document.getElementById('editPreviewImageEl');
-  if (editUploadedImageUrl) {
-    imgEl.src = editUploadedImageUrl;
-    imgBox.style.display = 'flex';
-  } else {
-    imgBox.style.display = 'none';
+  renderEditImagesPreview();
+  renderEditTags();
+}
+
+function renderEditImagesPreview() {
+  const listEl = document.getElementById('editImagesList');
+  const countEl = document.getElementById('editImagesCount');
+  if (!listEl) return;
+
+  if (countEl) countEl.innerText = editUploadedImages.length;
+
+  if (editUploadedImages.length === 0) {
+    listEl.innerHTML = `
+      <div class="p-3 text-stone-400 text-[11px] text-center w-full bg-white rounded-xl border border-dashed border-stone-200">
+        添付写真はありません（上の「＋ 写真を追加」から追加できます）
+      </div>
+    `;
+    return;
   }
 
-  renderEditTags();
+  listEl.innerHTML = editUploadedImages.map((imgUrl, idx) => `
+    <div class="relative w-20 h-20 rounded-xl overflow-hidden border border-stone-200 bg-white flex-shrink-0 shadow-2xs group">
+      <img src="${escapeHtml(imgUrl)}" class="w-full h-full object-cover cursor-pointer" alt="添付写真 ${idx + 1}" onclick="openLightbox(editUploadedImages, ${idx})">
+      <span class="absolute top-1 left-1 bg-black/65 text-white font-black text-[9px] px-1 rounded shadow-xs">#${idx + 1}</span>
+      <button type="button" onclick="removeEditImage(${idx})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 active:scale-90 text-white flex items-center justify-center text-[10px] font-bold shadow-xs transition" title="この写真を削除">
+        ✕
+      </button>
+    </div>
+  `).join('');
 }
 
 
@@ -2028,22 +2165,23 @@ function promptAddNewTag(context) {
 }
 
 async function handleEditFileChange(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
 
-  editUploadedImageUrl = await compressImageFile(file);
-  const imgEl = document.getElementById('editPreviewImageEl');
-  const imgBox = document.getElementById('editImagePreviewBox');
-  if (imgEl && imgBox && editUploadedImageUrl) {
-    imgEl.src = editUploadedImageUrl;
-    imgBox.style.display = 'flex';
+  for (const file of files) {
+    const compressed = await compressImageFile(file);
+    if (compressed) {
+      editUploadedImages.push(compressed);
+    }
   }
+
+  renderEditImagesPreview();
+  e.target.value = '';
 }
 
-function removeEditImage() {
-  editUploadedImageUrl = null;
-  document.getElementById('editImagePreviewBox').style.display = 'none';
-  document.getElementById('editPreviewImageEl').src = '';
+function removeEditImage(idx) {
+  editUploadedImages.splice(idx, 1);
+  renderEditImagesPreview();
 }
 
 function submitEditPost(e) {
@@ -2068,9 +2206,9 @@ function submitEditPost(e) {
     title: title,
     title_en: document.getElementById('editPostTitleEn').value.trim() || null,
     text_translation: transVal ? formatWithDateDividers(transVal) : null,
-    image_translation: editUploadedImageUrl ? (transVal || null) : null,
+    image_translation: editUploadedImages.length > 0 ? (transVal || null) : null,
     text_raw: rawVal || null,
-    image_raw: editUploadedImageUrl ? (rawVal || null) : null,
+    image_raw: editUploadedImages.length > 0 ? (rawVal || null) : null,
     summary: transVal || title,
     date: document.getElementById('editPostDate').value || null,
     time_start: document.getElementById('editPostTimeStart').value || null,
@@ -2080,7 +2218,8 @@ function submitEditPost(e) {
     items: itemsArr,
     tags: editSelectedTags.length > 0 ? normalizeTags(editSelectedTags) : ['その他'],
     child_id: document.getElementById('editPostChildId').value || editSelectedChildId || 'all',
-    image_url: editUploadedImageUrl,
+    images: [...editUploadedImages],
+    image_url: editUploadedImages[0] || null,
     updated_at: new Date().toISOString()
   };
 
@@ -2395,3 +2534,96 @@ function resetAllPostsData() {
   alert('🧹 すべてのおたよりデータを削除しました。');
   window.location.hash = "#/";
 }
+
+// ==========================================
+// 📸 写真拡大フルスクリーン・ライトボックス
+// ==========================================
+let currentLightboxImages = [];
+let currentLightboxIndex = 0;
+let currentDetailPageImages = [];
+
+function openLightbox(images, startIndex = 0) {
+  if (!images || images.length === 0) return;
+  currentLightboxImages = Array.isArray(images) ? images : [images];
+  currentLightboxIndex = Math.max(0, Math.min(startIndex, currentLightboxImages.length - 1));
+
+  const modal = document.getElementById('photoLightboxModal');
+  if (!modal) return;
+
+  modal.classList.remove('hidden');
+  updateLightboxView();
+
+  document.removeEventListener('keydown', handleLightboxKeyDown);
+  document.addEventListener('keydown', handleLightboxKeyDown);
+}
+
+function closeLightbox() {
+  const modal = document.getElementById('photoLightboxModal');
+  if (modal) modal.classList.add('hidden');
+  document.removeEventListener('keydown', handleLightboxKeyDown);
+}
+
+function lightboxNext() {
+  if (currentLightboxImages.length <= 1) return;
+  currentLightboxIndex = (currentLightboxIndex + 1) % currentLightboxImages.length;
+  updateLightboxView();
+}
+
+function lightboxPrev() {
+  if (currentLightboxImages.length <= 1) return;
+  currentLightboxIndex = (currentLightboxIndex - 1 + currentLightboxImages.length) % currentLightboxImages.length;
+  updateLightboxView();
+}
+
+function handleLightboxKeyDown(e) {
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowRight') lightboxNext();
+  if (e.key === 'ArrowLeft') lightboxPrev();
+}
+
+function updateLightboxView() {
+  const imgEl = document.getElementById('lightboxImageEl');
+  const counterEl = document.getElementById('lightboxCounter');
+  const thumbsEl = document.getElementById('lightboxThumbsContainer');
+  const prevBtn = document.getElementById('lightboxPrevBtn');
+  const nextBtn = document.getElementById('lightboxNextBtn');
+
+  const total = currentLightboxImages.length;
+  const currentImg = currentLightboxImages[currentLightboxIndex];
+
+  if (imgEl && currentImg) {
+    imgEl.src = currentImg;
+  }
+  if (counterEl) {
+    counterEl.innerText = `${currentLightboxIndex + 1} / ${total}`;
+  }
+
+  if (prevBtn && nextBtn) {
+    if (total <= 1) {
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+    } else {
+      prevBtn.style.display = 'flex';
+      nextBtn.style.display = 'flex';
+    }
+  }
+
+  if (thumbsEl) {
+    if (total <= 1) {
+      thumbsEl.innerHTML = '';
+      thumbsEl.style.display = 'none';
+    } else {
+      thumbsEl.style.display = 'flex';
+      thumbsEl.innerHTML = currentLightboxImages.map((src, idx) => {
+        const isCur = idx === currentLightboxIndex;
+        const borderCls = isCur ? 'border-rose-500 ring-2 ring-rose-400 scale-105 opacity-100' : 'border-white/30 opacity-60 hover:opacity-100';
+        return `
+          <div onclick="currentLightboxIndex=${idx};updateLightboxView()" class="w-12 h-12 rounded-lg overflow-hidden border-2 cursor-pointer flex-shrink-0 transition-all ${borderCls}">
+            <img src="${escapeHtml(src)}" class="w-full h-full object-cover" alt="サムネイル ${idx + 1}">
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+

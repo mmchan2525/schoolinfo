@@ -11,7 +11,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="./style.css?v=20260930_v33">
+  <link rel="stylesheet" href="./style.css?v=20260930_v34">
   <link rel="manifest" href="./manifest.json">
   
   <!-- iOS Safari PWA / WebClip Settings -->
@@ -133,22 +133,31 @@
             <h3 class="font-bold text-xs text-stone-900">プリントの写真 または 英語テキスト</h3>
           </div>
 
-          <!-- 写真撮影 / 選択 (コンパクト) -->
+          <!-- 写真撮影 / 選択 (コンパクト ＆ 複数枚対応) -->
           <div class="border border-dashed border-rose-300 hover:border-rose-400 bg-rose-50/40 rounded-2xl p-3.5 text-center transition cursor-pointer" onclick="document.getElementById('newFileInput').click()">
-            <input type="file" id="newFileInput" accept="image/*,application/pdf" class="hidden" onchange="handleNewFileChange(event)">
+            <input type="file" id="newFileInput" accept="image/*,application/pdf" multiple class="hidden" onchange="handleNewFileChange(event)">
             <div class="flex items-center justify-center gap-3">
               <div class="w-10 h-10 rounded-xl bg-white text-rose-500 flex items-center justify-center text-xl flex-shrink-0 shadow-xs border border-rose-100">
                 📷
               </div>
               <div class="text-left">
                 <p class="font-bold text-xs text-stone-900">写真を撮影 / プリント画像を選択</p>
-                <p class="text-[10px] text-stone-500 font-medium">タップしてカメラまたはアルバムを開く</p>
+                <p class="text-[10px] text-stone-500 font-medium">複数枚の選択・追加撮影も可能です</p>
               </div>
             </div>
-            <div id="newSelectedFileName" class="hidden mt-2 p-2 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-bold flex items-center justify-center gap-1.5 border border-emerald-200">
-              <span>✅ 選択中:</span>
-              <span id="newSelectedFileNameText" class="truncate max-w-[200px]"></span>
+          </div>
+
+          <!-- 選択中の写真サムネイル一覧 -->
+          <div id="newImagesPreviewContainer" class="hidden space-y-2 p-2.5 rounded-2xl bg-stone-50 border border-stone-200">
+            <div class="flex items-center justify-between px-1">
+              <span class="text-[11px] font-bold text-stone-700 flex items-center gap-1">
+                <span>📸 選択中の写真 (<span id="newImagesCount">0</span>枚)</span>
+              </span>
+              <button type="button" onclick="document.getElementById('newFileInput').click()" class="text-[11px] font-bold text-rose-500 hover:text-rose-600 flex items-center gap-0.5 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                <span>＋ 写真を追加</span>
+              </button>
             </div>
+            <div id="newImagesList" class="flex gap-2 overflow-x-auto pb-1 pt-0.5 no-scrollbar"></div>
           </div>
 
           <!-- テキスト入力 (コンパクト) -->
@@ -182,8 +191,7 @@
             <span class="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">✨ AI解析完了</span>
           </div>
 
-          <!-- タイトル -->
-                    <!-- 対象のお子さん選択 -->
+          <!-- 対象のお子さん選択 -->
           <div class="space-y-1.5 p-3 rounded-2xl bg-stone-50 border border-stone-200">
             <label class="text-[11px] font-bold text-stone-700 flex items-center justify-between">
               <span class="flex items-center gap-1">👶 <span>対象のお子さん</span></span>
@@ -193,6 +201,7 @@
             <input type="hidden" id="newPostChildId" value="all">
           </div>
 
+          <!-- タイトル -->
           <div class="space-y-1">
             <label class="text-[11px] font-bold text-stone-700 block">📌 タイトル（日本語） <span class="text-rose-500">*</span></label>
             <input type="text" id="newPostTitle" required placeholder="例: 第1四半期のお知らせ（UOI評価タスク）"
@@ -223,14 +232,15 @@
 
           <!-- ② 添付画像翻訳 -->
           <div id="newImageMessageSection" class="p-3 rounded-2xl bg-sky-50/60 border border-sky-200/80 space-y-2">
-            <label class="text-[11px] font-bold text-sky-950 flex items-center gap-1">
-              <span>🖼️ 添付プリント写真 ＆ 画像内の翻訳（日本語）</span>
-            </label>
-            
-            <!-- 画像プレビュー -->
-            <div id="newImagePreviewBox" class="w-full h-36 bg-white rounded-xl overflow-hidden flex items-center justify-center border border-sky-200 p-1.5">
-              <img id="newPreviewImageEl" src="" class="w-full h-full object-contain rounded-lg" alt="添付画像">
+            <div class="flex items-center justify-between">
+              <label class="text-[11px] font-bold text-sky-950 flex items-center gap-1">
+                <span>🖼️ 添付プリント写真 ＆ 画像内の翻訳（日本語）</span>
+              </label>
+              <span id="newStep2ImagesCount" class="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-full">0枚</span>
             </div>
+            
+            <!-- 画像プレビューギャラリー -->
+            <div id="newStep2ImagesContainer" class="flex gap-2 overflow-x-auto pb-1 pt-0.5 no-scrollbar"></div>
 
             <textarea id="newPostImageTranslation" rows="3" placeholder="プリント画像内に書かれている内容の日本語訳"
                       class="w-full p-2.5 text-xs bg-white border border-sky-200 rounded-xl focus:outline-none font-bold leading-relaxed"></textarea>
@@ -322,34 +332,19 @@
             <input type="hidden" id="editPostChildId" value="all">
           </div>
 
-
+          <!-- 添付写真エリア (複数枚対応) -->
           <div id="editImageSection" class="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
             <div class="flex items-center justify-between">
-              <label class="text-[11px] font-bold text-stone-800">🖼️ 添付写真</label>
-              <button type="button" onclick="removeEditImage()" class="text-[11px] text-rose-500 font-bold hover:underline">写真を削除</button>
-            </div>
-            
-            <div id="editImagePreviewBox" class="w-full h-36 bg-white rounded-xl overflow-hidden flex items-center justify-center border border-stone-200 p-1.5">
-              <img id="editPreviewImageEl" src="" class="w-full h-full object-contain rounded-lg" alt="添付写真">
-            </div>
-
-            <div class="pt-0.5">
-              <input type="file" id="editFileInput" accept="image/*,application/pdf" class="hidden" onchange="handleEditFileChange(event)">
-              <button type="button" onclick="document.getElementById('editFileInput').click()" class="w-full py-2 px-3 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-xs font-bold text-stone-800 flex items-center justify-center gap-1.5 transition shadow-xs">
-                <span>📷 写真を変更・再撮影する</span>
+              <label class="text-[11px] font-bold text-stone-800">🖼️ 添付写真 (<span id="editImagesCount">0</span>枚)</label>
+              <button type="button" onclick="document.getElementById('editFileInput').click()" class="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-0.5">
+                <span>＋ 写真を追加</span>
               </button>
             </div>
-          </div>
-
-          <!-- タイトル -->
-                    <!-- 対象のお子さん選択 -->
-          <div class="space-y-1.5 p-3 rounded-2xl bg-stone-50 border border-stone-200">
-            <label class="text-[11px] font-bold text-stone-700 flex items-center justify-between">
-              <span class="flex items-center gap-1">👶 <span>対象のお子さん</span></span>
-              <span class="text-[10px] text-stone-400 font-normal">※指定しない場合は全員共通</span>
-            </label>
-            <div id="newChildSelectorContainer" class="flex flex-wrap gap-1.5 pt-0.5"></div>
-            <input type="hidden" id="newPostChildId" value="all">
+            
+            <input type="file" id="editFileInput" accept="image/*,application/pdf" multiple class="hidden" onchange="handleEditFileChange(event)">
+            
+            <!-- 複数画像サムネイル一覧 -->
+            <div id="editImagesList" class="flex gap-2 overflow-x-auto pb-1 pt-0.5 no-scrollbar"></div>
           </div>
 
           <div class="space-y-1">
@@ -563,8 +558,31 @@
       </main>
     </div>
 
+  <!-- 📸 写真拡大フルスクリーン・ライトボックスモーダル -->
+  <div id="photoLightboxModal" class="hidden fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-3.5 backdrop-blur-sm select-none" onclick="closeLightbox()">
+    <!-- 上部ヘッダー -->
+    <div class="flex items-center justify-between text-white z-10" onclick="event.stopPropagation()">
+      <span id="lightboxCounter" class="text-xs font-bold bg-white/20 px-3 py-1 rounded-full">1 / 1</span>
+      <button type="button" onclick="closeLightbox()" class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 text-white flex items-center justify-center text-lg font-bold transition shadow-sm">
+        ✕
+      </button>
+    </div>
+
+    <!-- メイン画像表示エリア -->
+    <div class="flex-1 flex items-center justify-center overflow-hidden relative my-2" onclick="event.stopPropagation()">
+      <button type="button" id="lightboxPrevBtn" onclick="lightboxPrev()" class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center text-2xl font-bold transition z-10 shadow-md">
+        ‹
+      </button>
+      <img id="lightboxImageEl" src="" class="max-h-[78vh] max-h-[78dvh] max-w-[92vw] object-contain rounded-xl shadow-2xl transition duration-200" alt="写真拡大表示">
+      <button type="button" id="lightboxNextBtn" onclick="lightboxNext()" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center text-2xl font-bold transition z-10 shadow-md">
+        ›
+      </button>
+    </div>
+
+    <!-- 下部サムネイル帯 -->
+    <div id="lightboxThumbsContainer" class="flex items-center justify-center gap-2 overflow-x-auto py-1.5 no-scrollbar z-10" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script src="./app.js?v=20260930_v33"></script>
+  <script src="./app.js?v=20260930_v34"></script>
 </body>
 </html>
