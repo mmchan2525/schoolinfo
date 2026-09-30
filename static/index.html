@@ -454,34 +454,6 @@
       </header>
 
       <main class="p-4 space-y-4 flex-1 pb-28">
-        <!-- 👩‍💻 アプリ情報 ＆ 作成者 ＆ 最新版読込カード -->
-        <div class="p-4 bg-gradient-to-br from-rose-50/90 via-pink-50/60 to-white rounded-2xl border border-rose-200/90 space-y-3 shadow-xs">
-          <div class="flex items-center gap-3.5">
-            <img src="./assets/chan_meg.jpg" class="w-16 h-20 rounded-2xl object-cover object-top shadow-md border-2 border-white ring-2 ring-rose-200 flex-shrink-0" alt="chan_meg">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-1.5 mb-1">
-                <span class="text-[11px] font-black text-rose-950">作成者:</span>
-                <span class="text-xs font-black px-2 py-0.5 rounded-full bg-rose-500 text-white shadow-2xs">chan_meg</span>
-              </div>
-              <p class="text-[11px] font-bold text-stone-700">
-                システム: <span class="font-mono text-rose-600 font-extrabold">otayori-translate v1.0</span>
-              </p>
-              <p class="text-[10px] text-stone-500 leading-tight mt-1">
-                学校のおたより翻訳・予定管理
-              </p>
-            </div>
-          </div>
-
-          <!-- 🔄 最新版を読み込むボタン -->
-          <button type="button" onclick="reloadAppLatest()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:opacity-95 active:scale-[0.98] text-white font-black text-xs shadow-md shadow-rose-500/20 transition flex items-center justify-center gap-2 border border-white/40 cursor-pointer">
-            <span class="text-sm">🔄</span>
-            <span>最新版を読み込む（アプリを更新）</span>
-          </button>
-          <p class="text-[9.5px] text-stone-400 text-center font-medium">
-            ※キャッシュを完全にクリアし、最新の更新プログラムを読み込みます。
-          </p>
-        </div>
-
         <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-4 text-xs">
           
           <!-- ① 保護者のお名前 -->
@@ -613,20 +585,6 @@
           </div>
 
         </form>
-
-        <!-- 🌸 アプリ下部フッター (作成者・バージョン・最新版読込) -->
-        <footer class="pt-2 pb-6 flex flex-col items-center justify-center text-center space-y-1 select-none">
-          <div class="flex items-center justify-center gap-1.5 text-xs text-stone-600 font-medium">
-            <img src="./assets/avatar.jpg" class="w-6 h-6 rounded-full object-cover object-top border border-stone-300 shadow-2xs" alt="chan_meg">
-            <span>作者: <span class="underline underline-offset-2 decoration-stone-400 text-stone-700 font-bold">chan_meg</span></span>
-          </div>
-          <p class="text-[11px] text-stone-400 font-medium">
-            © chan_meg ・ otayori-translate v1.0
-          </p>
-          <button type="button" onclick="reloadAppLatest()" class="text-xs text-stone-500 hover:text-stone-800 underline underline-offset-4 decoration-stone-400 transition font-medium pt-0.5 cursor-pointer bg-transparent border-0">
-            最新版を読み込む
-          </button>
-        </footer>
       </main>
     </div>
 
