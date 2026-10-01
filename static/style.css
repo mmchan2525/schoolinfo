@@ -213,6 +213,44 @@ html, body {
   outline: none;
 }
 
+/* プレースホルダー（入力欄のサンプルグレー文字列）の文字サイズ調整 */
+input::placeholder,
+textarea::placeholder {
+  font-size: 0.68rem !important;
+  font-weight: 400 !important;
+  color: #A8A29E !important;
+  letter-spacing: -0.2px !important;
+  line-height: 1.35 !important;
+  opacity: 0.9 !important;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  font-size: 0.68rem !important;
+  font-weight: 400 !important;
+  color: #A8A29E !important;
+  letter-spacing: -0.2px !important;
+  line-height: 1.35 !important;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  font-size: 0.68rem !important;
+  font-weight: 400 !important;
+  color: #A8A29E !important;
+  letter-spacing: -0.2px !important;
+  line-height: 1.35 !important;
+}
+
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+  font-size: 0.68rem !important;
+  font-weight: 400 !important;
+  color: #A8A29E !important;
+  letter-spacing: -0.2px !important;
+  line-height: 1.35 !important;
+}
+
 /* モーダル */
 .hidden,
 #settingsModal.hidden {
