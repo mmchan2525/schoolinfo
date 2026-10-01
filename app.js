@@ -631,13 +631,14 @@ function renderUpcomingEvents(posts) {
     container.innerHTML = upcoming.map(p => renderEventCardHtml(p, false)).join('');
   }
 
-  // 過去の予定を描画（折りたたみアコーディオン）
+  // 過去の予定を描画（届いたおたより一覧の下に配置）
+  const pastSection = document.getElementById('pastEventsSection');
   if (pastContainer) {
     if (past.length === 0) {
       pastContainer.innerHTML = '';
-      pastContainer.classList.add('hidden');
+      if (pastSection) pastSection.classList.add('hidden');
     } else {
-      pastContainer.classList.remove('hidden');
+      if (pastSection) pastSection.classList.remove('hidden');
       pastContainer.innerHTML = `
         <details class="group bg-stone-50/90 border border-stone-200/80 rounded-2xl overflow-hidden shadow-2xs transition">
           <summary class="flex items-center justify-between p-2.5 px-3.5 cursor-pointer text-xs font-bold text-stone-600 hover:text-stone-900 select-none list-none transition">

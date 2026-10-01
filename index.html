@@ -69,7 +69,7 @@
           <div id="childTabsContainer" class="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar text-xs"></div>
         </section>
 
-        <!-- 📅 予定セクション（直近の予定 ＆ 過去の予定） -->
+        <!-- 📅 直近の予定 -->
         <section id="upcomingEventsSection" class="space-y-2">
           <div class="flex items-center justify-between px-1">
             <div class="flex items-center gap-1.5 text-xs font-black text-stone-800 tracking-wide">
@@ -78,9 +78,6 @@
             </div>
           </div>
           <div id="upcomingEventsList" class="space-y-2"></div>
-          
-          <!-- 🕰️ 過去の予定（折りたたみアコーディオン） -->
-          <div id="pastEventsContainer" class="pt-0.5"></div>
         </section>
 
         <!-- 📑 届いたおたより一覧 -->
@@ -98,6 +95,11 @@
 
           <!-- おたよりカードリスト (横書き・コンパクト) -->
           <div id="postsList" class="space-y-2.5 mt-1"></div>
+        </section>
+
+        <!-- 🕰️ 過去の予定（届いたおたより一覧の下に配置） -->
+        <section id="pastEventsSection" class="space-y-2 pt-0.5">
+          <div id="pastEventsContainer"></div>
         </section>
 
         <!-- 🌸 アプリ下部フッター (作成者・バージョン・最新版読込) -->
