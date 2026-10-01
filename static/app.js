@@ -483,6 +483,16 @@ function handleRouting() {
   if (window.lucide) {
     try { lucide.createIcons(); } catch(e) {}
   }
+
+  // Google Analytics 4 (GA4) SPA画面遷移計測
+  if (typeof gtag === 'function') {
+    try {
+      gtag('event', 'page_view', {
+        page_path: hash,
+        page_title: document.title
+      });
+    } catch(e) {}
+  }
 }
 
 window.addEventListener('hashchange', handleRouting);
