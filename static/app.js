@@ -2425,28 +2425,29 @@ async function translateEditTitleFromEn() {
 }
 
 async function executeEditAIAnalyze() {
+  const titleJaInput = document.getElementById('editPostTitle');
   const titleEnInput = document.getElementById('editPostTitleEn');
   const rawInput = document.getElementById('editPostRaw');
   const transInput = document.getElementById('editPostTranslation');
   
+  let rawText = (rawInput ? rawInput.value : '').trim();
+  const transText = (transInput ? transInput.value : '').trim();
   const titleEnVal = (titleEnInput ? titleEnInput.value : '').trim();
-  let textVal = (rawInput ? rawInput.value : '').trim();
   
   // 原文欄が空で翻訳欄に入力がある場合の柔軟な対応
-  if (!textVal && transInput) {
-    textVal = transInput.value.trim();
+  if (!rawText && transText) {
+    rawText = transText;
   }
 
-  // 英語原題、添付画像、本文原文のいずれかがあれば翻訳実行可能
-  if (editUploadedImages.length === 0 && !textVal && !titleEnVal) {
-    alert('写真を追加するか、英語の原題または原文テキストを入力してください。');
+  // 英語原文も写真もなく英語原題のみが変更された場合
+  if (editUploadedImages.length === 0 && !rawText && titleEnVal) {
+    await translateEditTitleFromEn();
     return;
   }
 
-  // AIに渡すテキストに英語原題も含める
-  let combinedTextForAI = textVal;
-  if (titleEnVal) {
-    combinedTextForAI = `Title: ${titleEnVal}\n\n${textVal || ''}`.trim();
+  if (editUploadedImages.length === 0 && !rawText) {
+    alert('写真を追加するか、英語の原文テキストを入力してください。');
+    return;
   }
 
   const loadingBox = document.getElementById('editLoadingBox');
@@ -2464,57 +2465,49 @@ async function executeEditAIAnalyze() {
     if (apiKey) {
       console.log(`Using Gemini API Direct Call in Edit View with ${editUploadedImages.length} images...`);
       try {
-        draft = await callGeminiDirect(apiKey, editUploadedImages, combinedTextForAI);
+        draft = await callGeminiDirect(apiKey, editUploadedImages, rawText);
         if (draft) {
           console.log('✨ Gemini AI Direct analysis (Edit) succeeded!');
         } else {
           console.warn('Gemini direct call returned null in edit, falling back...');
-          alert(`⚠️ Gemini API呼出に失敗しました。\n\n【エラー詳細】\n${lastGeminiErrorDetails || 'APIキーまたは通信エラー'}\n\n（簡易OCRモードで読取を継続します）`);
         }
       } catch (geminiErr) {
         console.warn('Gemini direct call failed in edit:', geminiErr);
-        alert(`⚠️ Gemini API通信エラー: ${geminiErr.message}\n（簡易OCRモードで読取を継続します）`);
       }
-    } else {
-      console.log('No Gemini API Key set in settings. Using Client OCR translation fallback in Edit.');
     }
 
     // 2. クライアント側フォールバック翻訳（Google Translate + MyMemory + 高速OCR + 内蔵辞書）
     if (!draft) {
       console.log('Using Client-side Robust Multi-tier Translation Engine for edit...');
-      draft = await clientSideTranslateEngine(combinedTextForAI, editUploadedImages);
+      draft = await clientSideTranslateEngine(rawText, editUploadedImages);
     }
 
     if (loadingBox) loadingBox.classList.add('hidden');
     if (aiBtn) aiBtn.disabled = false;
 
     if (draft) {
-      // ユーザーが手入力した英語原題がある場合、それを優先して日本語タイトルを確実に翻訳
-      if (titleEnVal) {
-        if (titleEnInput) titleEnInput.value = titleEnVal;
-        const translatedJaTitle = await translateTitleText(titleEnVal);
-        if (translatedJaTitle && document.getElementById('editPostTitle')) {
-          document.getElementById('editPostTitle').value = translatedJaTitle;
-        } else if (draft.title && document.getElementById('editPostTitle')) {
-          document.getElementById('editPostTitle').value = draft.title;
-        }
-      } else {
-        if (draft.title && document.getElementById('editPostTitle')) {
-          document.getElementById('editPostTitle').value = draft.title;
-        }
-        if (draft.title_en && document.getElementById('editPostTitleEn')) {
-          document.getElementById('editPostTitleEn').value = draft.title_en;
-        }
+      // 🌟 英語原文に合わせてタイトル（日本語・英語）を新しく自動更新
+      if (draft.title && titleJaInput) {
+        titleJaInput.value = draft.title;
+        titleJaInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50/40');
+        setTimeout(() => titleJaInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/40'), 2000);
+      }
+      if (draft.title_en && titleEnInput) {
+        titleEnInput.value = draft.title_en;
+        titleEnInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50/40');
+        setTimeout(() => titleEnInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/40'), 2000);
       }
       
       const trans = draft.text_translation || draft.image_translation || draft.summary;
-      if (trans && document.getElementById('editPostTranslation')) {
-        document.getElementById('editPostTranslation').value = formatWithDateDividers(trans);
+      if (trans && transInput) {
+        transInput.value = formatWithDateDividers(trans);
+        transInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50/40');
+        setTimeout(() => transInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/40'), 2000);
       }
 
-      const raw = draft.text_raw || draft.image_raw || textVal;
-      if (raw && document.getElementById('editPostRaw')) {
-        document.getElementById('editPostRaw').value = raw;
+      const raw = draft.text_raw || draft.image_raw || rawText;
+      if (raw && rawInput) {
+        rawInput.value = raw;
       }
 
       if (draft.items && Array.isArray(draft.items) && draft.items.length > 0 && document.getElementById('editPostItems')) {
@@ -2553,17 +2546,8 @@ async function executeEditAIAnalyze() {
         renderEditTags();
       }
 
-      alert('✨ AIによる再翻訳・読取が完了しました！\n内容を確認して、一番下の「💾 変更を保存する」ボタンを押してください。');
+      alert('✨ 英語原文に合わせてタイトル・日本語訳・日程・持ち物を更新しました！\n内容を確認して、一番下の「💾 変更を保存する」ボタンを押してください。');
     } else {
-      // draftが取得できなかった場合でも、titleEnValがあればタイトルだけは翻訳
-      if (titleEnVal) {
-        const jaTitle = await translateTitleText(titleEnVal);
-        if (jaTitle && document.getElementById('editPostTitle')) {
-          document.getElementById('editPostTitle').value = jaTitle;
-          alert('✨ 英語原題を日本語タイトルに翻訳しました！');
-          return;
-        }
-      }
       alert('⚠️ 翻訳テキストを取得できませんでした。手動で編集いただけます。');
     }
   } catch (err) {
