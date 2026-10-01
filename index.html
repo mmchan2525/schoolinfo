@@ -366,6 +366,27 @@
             <div id="editImagesList" class="flex gap-2 overflow-x-auto pb-1 pt-0.5 no-scrollbar"></div>
           </div>
 
+          <!-- AI再翻訳・読取アクションバナー -->
+          <div class="p-3 bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 rounded-2xl border border-rose-200/90 shadow-2xs space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-rose-950 flex items-center gap-1.5">
+                <span class="text-sm">✨</span>
+                <span>AIで再読取 ＆ 翻訳</span>
+              </span>
+              <span class="text-[10px] text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-full font-bold">写真・原文から自動反映</span>
+            </div>
+            <p class="text-[10.5px] text-stone-600 leading-tight">写真を追加した時や、下の英語原文を編集した後に押すと、AIがタイトル・日本語訳・日程・持ち物を自動で再翻訳・抽出します。</p>
+            <button type="button" id="editAIAnalyzeBtn" onclick="executeEditAIAnalyze()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 active:scale-[0.98] text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 border border-white/20">
+              <span>✨ AIで再翻訳・読取を実行</span>
+            </button>
+          </div>
+
+          <!-- AI解析中のローディング表示 -->
+          <div id="editLoadingBox" class="hidden p-4 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-2 animate-pulse">
+            <div class="inline-block w-6 h-6 border-3 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-xs font-bold text-rose-800">AIが英語を再読取し、日本語に翻訳しています...</p>
+          </div>
+
           <div class="space-y-1">
             <label class="text-[11px] font-bold text-stone-700 block">📌 タイトル（日本語） <span class="text-rose-500">*</span></label>
             <input type="text" id="editPostTitle" required
@@ -381,15 +402,20 @@
 
           <!-- おたよりの日本語訳 ＆ 連絡事項 -->
           <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-2">
-            <label class="text-xs font-bold text-amber-950 flex items-center gap-1">
-              <span>📝 おたよりの日本語訳 ＆ 連絡事項</span>
-            </label>
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-amber-950 flex items-center gap-1">
+                <span>📝 おたよりの日本語訳 ＆ 連絡事項</span>
+              </label>
+              <button type="button" onclick="executeEditAIAnalyze()" class="text-[10.5px] font-bold text-amber-900 bg-amber-200/70 hover:bg-amber-200 active:scale-95 px-2.5 py-1 rounded-xl transition flex items-center gap-1 shadow-2xs border border-amber-300/60">
+                <span>✨ AI再翻訳</span>
+              </button>
+            </div>
             <textarea id="editPostTranslation" rows="4" placeholder="おたよりの日本語訳・連絡事項"
                       class="w-full p-3 text-xs bg-white border border-amber-200 rounded-xl focus:outline-none font-bold leading-relaxed shadow-xs"></textarea>
             
             <details class="text-[11px] pt-1">
               <summary class="font-bold text-amber-900 cursor-pointer hover:text-amber-950">英語原文（メール本文・画像OCR）を表示 / 編集</summary>
-              <textarea id="editPostRaw" rows="3" placeholder="英語の原文テキスト"
+              <textarea id="editPostRaw" rows="3" placeholder="英語の原文テキスト（修正後に「AI再翻訳」を押すと反映されます）"
                         class="mt-1.5 w-full p-2.5 text-[10px] bg-white border border-stone-200 rounded-xl font-mono text-stone-600 leading-relaxed"></textarea>
             </details>
           </div>

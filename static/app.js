@@ -2231,6 +2231,126 @@ function removeEditImage(idx) {
   renderEditImagesPreview();
 }
 
+async function executeEditAIAnalyze() {
+  const rawInput = document.getElementById('editPostRaw');
+  const transInput = document.getElementById('editPostTranslation');
+  let textVal = (rawInput ? rawInput.value : '').trim();
+  
+  // 原文欄が空で翻訳欄に入力がある場合の柔軟な対応
+  if (!textVal && transInput) {
+    textVal = transInput.value.trim();
+  }
+
+  if (editUploadedImages.length === 0 && !textVal) {
+    alert('写真を追加するか、英語の原文テキストを入力してください。');
+    return;
+  }
+
+  const loadingBox = document.getElementById('editLoadingBox');
+  const aiBtn = document.getElementById('editAIAnalyzeBtn');
+  if (loadingBox) loadingBox.classList.remove('hidden');
+  if (aiBtn) aiBtn.disabled = true;
+
+  try {
+    const settings = DB.getSettings();
+    const apiKey = (settings.gemini_api_key || '').trim();
+
+    let draft = null;
+
+    // 1. Gemini API Direct Call (ユーザー設定APIキーがある場合)
+    if (apiKey) {
+      console.log(`Using Gemini API Direct Call in Edit View with ${editUploadedImages.length} images...`);
+      try {
+        draft = await callGeminiDirect(apiKey, editUploadedImages, textVal);
+        if (draft) {
+          console.log('✨ Gemini AI Direct analysis (Edit) succeeded!');
+        } else {
+          console.warn('Gemini direct call returned null in edit, falling back...');
+          alert(`⚠️ Gemini API呼出に失敗しました。\n\n【エラー詳細】\n${lastGeminiErrorDetails || 'APIキーまたは通信エラー'}\n\n（簡易OCRモードで読取を継続します）`);
+        }
+      } catch (geminiErr) {
+        console.warn('Gemini direct call failed in edit:', geminiErr);
+        alert(`⚠️ Gemini API通信エラー: ${geminiErr.message}\n（簡易OCRモードで読取を継続します）`);
+      }
+    } else {
+      console.log('No Gemini API Key set in settings. Using Client OCR translation fallback in Edit.');
+    }
+
+    // 2. クライアント側フォールバック翻訳（Google Translate + MyMemory + 高速OCR + 内蔵辞書）
+    if (!draft) {
+      console.log('Using Client-side Robust Multi-tier Translation Engine for edit...');
+      draft = await clientSideTranslateEngine(textVal, editUploadedImages);
+    }
+
+    if (loadingBox) loadingBox.classList.add('hidden');
+    if (aiBtn) aiBtn.disabled = false;
+
+    if (draft) {
+      if (draft.title && document.getElementById('editPostTitle')) {
+        document.getElementById('editPostTitle').value = draft.title;
+      }
+      if (draft.title_en && document.getElementById('editPostTitleEn')) {
+        document.getElementById('editPostTitleEn').value = draft.title_en;
+      }
+      
+      const trans = draft.text_translation || draft.image_translation || draft.summary;
+      if (trans && document.getElementById('editPostTranslation')) {
+        document.getElementById('editPostTranslation').value = formatWithDateDividers(trans);
+      }
+
+      const raw = draft.text_raw || draft.image_raw || textVal;
+      if (raw && document.getElementById('editPostRaw')) {
+        document.getElementById('editPostRaw').value = raw;
+      }
+
+      if (draft.items && Array.isArray(draft.items) && draft.items.length > 0 && document.getElementById('editPostItems')) {
+        document.getElementById('editPostItems').value = draft.items.join(', ');
+      }
+
+      if (draft.date && document.getElementById('editPostDate')) {
+        document.getElementById('editPostDate').value = draft.date;
+      }
+
+      if (draft.time_start && document.getElementById('editPostTimeStart')) {
+        document.getElementById('editPostTimeStart').value = draft.time_start;
+      }
+
+      if (draft.location && document.getElementById('editPostLocation')) {
+        document.getElementById('editPostLocation').value = draft.location;
+      }
+
+      if (draft.deadline && document.getElementById('editPostDeadline')) {
+        document.getElementById('editPostDeadline').value = draft.deadline;
+      }
+
+      if (draft.deadline_description && document.getElementById('editPostDeadlineDesc')) {
+        document.getElementById('editPostDeadlineDesc').value = draft.deadline_description;
+      }
+
+      if (draft.child_id) {
+        editSelectedChildId = draft.child_id;
+        const editChildInput = document.getElementById('editPostChildId');
+        if (editChildInput) editChildInput.value = editSelectedChildId;
+        renderChildSelector('editChildSelectorContainer', editSelectedChildId, 'selectEditPostChild');
+      }
+
+      if (draft.tags && Array.isArray(draft.tags) && draft.tags.length > 0) {
+        editSelectedTags = normalizeTags(draft.tags);
+        renderEditTags();
+      }
+
+      alert('✨ AIによる再翻訳・読取が完了しました！\n内容を確認して、一番下の「💾 変更を保存する」ボタンを押してください。');
+    } else {
+      alert('⚠️ 翻訳テキストを取得できませんでした。手動で編集いただけます。');
+    }
+  } catch (err) {
+    if (loadingBox) loadingBox.classList.add('hidden');
+    if (aiBtn) aiBtn.disabled = false;
+    console.error('Edit AI Analysis Error:', err);
+    alert('AI再解析中にエラーが発生しました: ' + err.message);
+  }
+}
+
 function submitEditPost(e) {
   e.preventDefault();
   const oldPost = DB.getPostById(editPostId) || {};
