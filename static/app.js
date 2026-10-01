@@ -1823,47 +1823,69 @@ async function clientTranslate(text) {
   return translated.join('\n\n');
 }
 
-// 単一テキストチャンクの多重フォールバック翻訳 (絶対に例外をスローしない)
+// 🌟 単一テキストチャンクの多重フォールバック翻訳 (CORS完全対応・高精度)
 async function translateSingleChunk(chunk) {
   if (!chunk || !chunk.trim()) return "";
+  const trimmed = chunk.trim();
 
-  // 1. Google Translate API 直接呼び出し
+  // 1. Google Translate (clients5 API - CORS開放 & 高速 & 超高精度)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const url = `https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ja&q=${encodeURIComponent(trimmed)}`;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string' && data[0].trim()) {
+        return data[0].trim();
+      }
+    }
+  } catch(e) {
+    console.warn('Google clients5 translate error:', e);
+  }
+
+  // 2. Google Translate (gtx API フォールバック)
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ja&dt=t&q=${encodeURIComponent(chunk)}`;
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ja&dt=t&q=${encodeURIComponent(trimmed)}`;
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && Array.isArray(data[0])) {
         const t = data[0].map(item => item && item[0]).filter(Boolean).join('');
-        if (t && t.trim()) return t;
+        if (t && t.trim()) return t.trim();
       }
     }
   } catch(e) {}
 
-  // 2. MyMemory API (CORS完全対応・高精度)
+  // 3. MyMemory API (CORS完全対応)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|ja`;
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=en|ja&de=otayori-post@app.com`;
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      const t = data && data.responseData && data.responseData.translatedText;
+      let t = data && data.responseData && data.responseData.translatedText;
       if (t && !t.startsWith("MYMEMORY WARNING") && !t.includes("QUERY LENGTH LIMIT")) {
-        return t;
+        const doc = new DOMParser().parseFromString(t, 'text/html');
+        t = doc.body.textContent || t;
+        if (t && t.trim()) return t.trim();
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn('MyMemory translate error:', e);
+  }
 
-  // 3. 内蔵オフライン学校英語辞書による自然翻訳フォールバック
-  return offlineDictionaryTranslate(chunk);
+  // 4. 内蔵オフライン学校英語辞書による自然翻訳フォールバック
+  return offlineDictionaryTranslate(trimmed);
 }
 
-// オフライン学校英語辞書変換
+// 🌟 オフライン学校英語辞書変換（大幅強化版）
 function offlineDictionaryTranslate(text) {
   let res = text;
   const dict = [
@@ -1875,25 +1897,57 @@ function offlineDictionaryTranslate(text) {
     [/Summative Assessment/gi, '総括評価（SA）'],
     [/Unit of Inquiry/gi, '探究単元（UOI）'],
     [/Identity Explorer/gi, 'アイデンティティ・エクスプローラー（自分探究者）'],
+    [/Swimming Gala/gi, '水泳記録会・水泳大会'],
+    [/Swimming/gi, '水泳・プール'],
     [/Field Trip/gi, '遠足・校外学習'],
+    [/Camp Information/gi, 'キャンプ・宿泊学習のご案内'],
+    [/Camp/gi, 'キャンプ・宿泊学習'],
     [/Permission Slip/gi, '参加同意書・提出用紙'],
     [/Early Dismissal/gi, '短縮授業・早下校'],
     [/Opening Ceremony/gi, '始業式'],
+    [/Closing Ceremony/gi, '終業式・修了式'],
+    [/Graduation Ceremony/gi, '卒業式'],
     [/Welcome Back/gi, '新学期へようこそ'],
     [/Sports Day/gi, '運動会・スポーツデー'],
-    [/Shoebox/gi, '靴箱'],
-    [/Shoe box/gi, '靴箱'],
-    [/Stickers/gi, 'ステッカー・シール'],
+    [/Sports Day Schedule/gi, '運動会・スポーツデー日程表'],
+    [/School Newsletter/gi, '学校だより'],
+    [/Newsletter/gi, '学年・クラス便り'],
+    [/Weekly Notice/gi, '週刊お知らせ'],
+    [/Notice/gi, 'お知らせ'],
+    [/Schedule/gi, '日程表・スケジュール'],
+    [/Parent Teacher Conference/gi, '保護者面談・三者面談'],
+    [/Parent Teacher Meeting/gi, 'PTA・保護者会'],
+    [/Art Exhibition/gi, '作品展・アート展'],
+    [/Music Concert/gi, '音楽発表会・コンサート'],
+    [/Science Fair/gi, '理科研究発表会'],
+    [/Math Competition/gi, '算数コンテスト'],
+    [/Photo Day/gi, '写真撮影日'],
+    [/School Uniform/gi, '制服・標準服'],
+    [/Library Book/gi, '図書室の本'],
+    [/Bake Sale/gi, 'ベイクセール（バザー）'],
+    [/Assembly/gi, '全校朝会・集会'],
+    [/Excursion/gi, '校外見学'],
+    [/Picnic/gi, 'ピクニック・遠足'],
+    [/Grade 1|Year 1/gi, '小学1年生'],
+    [/Grade 2|Year 2/gi, '小学2年生'],
+    [/Grade 3|Year 3/gi, '小学3年生'],
+    [/Grade 4|Year 4/gi, '小学4年生'],
+    [/Grade 5|Year 5/gi, '小学5年生'],
+    [/Grade 6|Year 6/gi, '小学6年生'],
+    [/Kindergarten/gi, '幼稚園・年長'],
+    [/Preschool/gi, '保育園・プレスクール'],
+    [/Shoebox|Shoe box/gi, '靴箱'],
+    [/Stickers?/gi, 'ステッカー・シール'],
     [/Photos?/gi, '写真'],
     [/Scissors/gi, 'はさみ'],
     [/Glue/gi, 'のり'],
     [/Water bottle/gi, '水筒'],
-    [/Packed lunch/gi, 'お弁当'],
+    [/Packed lunch|Lunch box/gi, 'お弁当'],
     [/Lunch/gi, '昼食・お弁当'],
     [/Apron/gi, 'エプロン'],
     [/Backpack/gi, 'リュックサック'],
     [/Raincoat/gi, 'レインコート・雨具'],
-    [/Indoor clean shoes/gi, '上履き・室内履き'],
+    [/Indoor clean shoes|Indoor shoes/gi, '上履き・室内履き'],
     [/Disaster hood/gi, '防災頭巾'],
     [/Homework/gi, '宿題'],
     [/Health check card/gi, '健康観察カード'],
