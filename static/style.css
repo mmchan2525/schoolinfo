@@ -118,6 +118,13 @@ html, body {
   margin-top: 1px;
 }
 
+.date-badge.is-past {
+  background: #F5F5F4 !important;
+  border-color: #E7E5E4 !important;
+  color: #78716C !important;
+  box-shadow: none !important;
+}
+
 /* 持ち物タグ (M3 Assist Chip) */
 .item-tag {
   display: inline-flex;

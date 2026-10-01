@@ -555,9 +555,57 @@ function renderHomePage() {
   applyTagFilters();
 }
 
-// 📅 直近の予定（今日以降の未来の予定のみを表示 - コンパクト版）
+// 📅 予定カードの共通HTML生成（直近の予定 / 過去の予定）
+function renderEventCardHtml(p, isPast = false) {
+  const dParts = (p.date || '').split('-');
+  const day = dParts.length === 3 ? dParts[2] : '—';
+  const month = dParts.length === 3 ? `${parseInt(dParts[1])}月` : '—';
+  const timeStr = p.time_start ? `<span>⏰ ${escapeHtml(p.time_start)}〜</span>` : '';
+  const locStr = p.location ? `<span class="truncate">📍 ${escapeHtml(p.location)}</span>` : '';
+  const childBadge = (activeChildId === 'all' && p.child_id && p.child_id !== 'all')
+    ? getChildBadgeHtml(p.child_id)
+    : '';
+  
+  const badgeCls = isPast ? 'date-badge is-past' : 'date-badge';
+  const cardCls = isPast
+    ? 'm3-card post-card otayori-card block p-2.5 bg-white/90 border-stone-200/90 no-underline opacity-90 hover:opacity-100 transition shadow-2xs'
+    : 'm3-card post-card otayori-card block p-3 no-underline';
+  const statusBadge = isPast
+    ? '<span class="text-[9.5px] px-1.5 py-0.2 rounded-full bg-stone-200/80 text-stone-600 font-black flex-shrink-0">終了</span>'
+    : '';
+
+  return `
+    <a href="#/post/${p.id}" class="${cardCls}">
+      <div class="flex items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <div class="${badgeCls}">
+            <span class="day">${day}</span>
+            <span class="month">${month}</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 mb-0.5">
+              ${statusBadge}
+              ${childBadge}
+              <h4 class="font-bold text-xs ${isPast ? 'text-stone-700' : 'text-stone-900'} truncate leading-snug">${escapeHtml(p.title)}</h4>
+            </div>
+            <div class="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500 font-medium">
+              ${timeStr}
+              ${locStr}
+            </div>
+          </div>
+        </div>
+        <span class="w-6 h-6 rounded-full ${isPast ? 'bg-stone-100 text-stone-400' : 'bg-rose-50 text-rose-500'} font-bold text-xs flex items-center justify-center flex-shrink-0">
+          ›
+        </span>
+      </div>
+    </a>
+  `;
+}
+
+// 📅 予定セクション（直近の未来予定 ＆ 過去の予定 - フィルタ対応）
 function renderUpcomingEvents(posts) {
   const container = document.getElementById('upcomingEventsList');
+  const pastContainer = document.getElementById('pastEventsContainer');
   if (!container) return;
 
   const now = new Date();
@@ -565,52 +613,50 @@ function renderUpcomingEvents(posts) {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   const todayStr = `${y}-${m}-${d}`;
+
+  // 未来の予定（今日以降）: 日付昇順（近い順、最大5件）
   const upcoming = posts
     .filter(p => p.date && p.date >= todayStr)
     .sort((a, b) => (a.date > b.date ? 1 : -1))
     .slice(0, 5);
 
+  // 過去の予定（昨日以前）: 日付降順（直近の過去順）
+  const past = posts
+    .filter(p => p.date && p.date < todayStr)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+
   if (upcoming.length === 0) {
-    container.innerHTML = '<div class="text-center py-2.5 text-stone-400 text-xs">直近（予定あり）のおたよりはありません</div>';
-    return;
+    container.innerHTML = '<div class="text-center py-2.5 text-stone-400 text-xs font-medium">直近（今日以降）の予定はありません</div>';
+  } else {
+    container.innerHTML = upcoming.map(p => renderEventCardHtml(p, false)).join('');
   }
 
-  container.innerHTML = upcoming.map(p => {
-    const dParts = (p.date || '').split('-');
-    const day = dParts.length === 3 ? dParts[2] : '—';
-    const month = dParts.length === 3 ? `${parseInt(dParts[1])}月` : '—';
-    const timeStr = p.time_start ? `<span>⏰ ${escapeHtml(p.time_start)}〜</span>` : '';
-    const locStr = p.location ? `<span class="truncate">📍 ${escapeHtml(p.location)}</span>` : '';
-    const childBadge = (activeChildId === 'all' && p.child_id && p.child_id !== 'all')
-      ? getChildBadgeHtml(p.child_id)
-      : '';
-
-    return `
-      <a href="#/post/${p.id}" class="m3-card post-card otayori-card block p-3 no-underline">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0 flex-1">
-            <div class="date-badge">
-              <span class="day">${day}</span>
-              <span class="month">${month}</span>
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-1.5 mb-0.5">
-                ${childBadge}
-                <h4 class="font-bold text-xs text-stone-900 truncate leading-snug">${escapeHtml(p.title)}</h4>
-              </div>
-              <div class="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500 font-medium">
-                ${timeStr}
-                ${locStr}
-              </div>
-              </div>
+  // 過去の予定を描画（折りたたみアコーディオン）
+  if (pastContainer) {
+    if (past.length === 0) {
+      pastContainer.innerHTML = '';
+      pastContainer.classList.add('hidden');
+    } else {
+      pastContainer.classList.remove('hidden');
+      pastContainer.innerHTML = `
+        <details class="group bg-stone-50/90 border border-stone-200/80 rounded-2xl overflow-hidden shadow-2xs transition">
+          <summary class="flex items-center justify-between p-2.5 px-3.5 cursor-pointer text-xs font-bold text-stone-600 hover:text-stone-900 select-none list-none transition">
+            <span class="flex items-center gap-1.5">
+              <span>🕰️ 過去の予定</span>
+              <span class="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded-full font-black">${past.length}件</span>
+            </span>
+            <span class="text-[11px] text-stone-400 group-open:rotate-180 transition-transform duration-200 flex items-center gap-1 font-medium">
+              <span>一覧を開く</span>
+              <span>▼</span>
+            </span>
+          </summary>
+          <div class="p-2.5 pt-1 space-y-2 border-t border-stone-200/60 mt-0.5">
+            ${past.map(p => renderEventCardHtml(p, true)).join('')}
           </div>
-          <span class="w-6 h-6 rounded-full bg-rose-50 text-rose-500 font-bold text-xs flex items-center justify-center flex-shrink-0">
-            ›
-          </span>
-        </div>
-      </a>
-    `;
-  }).join('');
+        </details>
+      `;
+    }
+  }
 }
 
 // 📑 届いたおたより一覧（横書き・読みやすいコンパクトM3カード）
