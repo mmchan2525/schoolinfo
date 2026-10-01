@@ -2231,9 +2231,151 @@ function removeEditImage(idx) {
   renderEditImagesPreview();
 }
 
+// 🌟 英語原題（タイトル）専用の高精度翻訳関数
+async function translateTitleText(enText) {
+  if (!enText || !enText.trim()) return "";
+  const trimmed = enText.trim();
+
+  // 1. Gemini API (APIキーがある場合)
+  const settings = DB.getSettings();
+  const apiKey = (settings.gemini_api_key || '').trim();
+  if (apiKey) {
+    try {
+      const models = await getAvailableGeminiModels(apiKey);
+      const m = models[0] || 'gemini-1.5-flash-latest';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Translate this school newsletter/notice English title into a natural, polite Japanese title for parents. Output ONLY the translated Japanese title without quotes or markdown:\n"${trimmed}"`
+            }]
+          }]
+        })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const cand = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (cand) {
+          return cand.replace(/^["'「]+|["'」]+$/g, '').trim();
+        }
+      }
+    } catch(e) {
+      console.warn('Gemini title translation failed:', e);
+    }
+  }
+
+  // 2. Google Translate / MyMemory フォールバック
+  try {
+    const t = await translateSingleChunk(trimmed);
+    if (t && t.trim() && t.trim() !== trimmed) {
+      return t.trim().replace(/^["'「]+|["'」]+$/g, '').replace(/[.!]+$/, '');
+    }
+  } catch(e) {}
+
+  // 3. オフライン辞書フォールバック
+  const dictResult = offlineDictionaryTranslate(trimmed);
+  if (dictResult && dictResult !== trimmed) {
+    return dictResult;
+  }
+
+  return trimmed;
+}
+
+// 🌟 新規作成画面用: 英語原題からタイトルをワンタップ翻訳
+async function translateNewTitleFromEn() {
+  const enInput = document.getElementById('newPostTitleEn');
+  const jaInput = document.getElementById('newPostTitle');
+  const btn = document.getElementById('newTranslateTitleBtn');
+  const enVal = (enInput ? enInput.value : '').trim();
+
+  if (!enVal) {
+    alert('英語の原題を入力してください');
+    if (enInput) enInput.focus();
+    return;
+  }
+
+  const oldBtnHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>⏳ 翻訳中...</span>`;
+  }
+
+  try {
+    const jaTitle = await translateTitleText(enVal);
+    if (jaTitle && jaInput) {
+      jaInput.value = jaTitle;
+      if (btn) {
+        btn.innerHTML = `<span>✅ 翻訳完了</span>`;
+        setTimeout(() => {
+          if (btn) {
+            btn.innerHTML = oldBtnHtml;
+            btn.disabled = false;
+          }
+        }, 1500);
+      }
+    }
+  } catch(e) {
+    console.error('Title translate error:', e);
+    alert('タイトル翻訳に失敗しました: ' + e.message);
+    if (btn) {
+      btn.innerHTML = oldBtnHtml;
+      btn.disabled = false;
+    }
+  }
+}
+
+// 🌟 編集画面用: 英語原題からタイトルをワンタップ翻訳
+async function translateEditTitleFromEn() {
+  const enInput = document.getElementById('editPostTitleEn');
+  const jaInput = document.getElementById('editPostTitle');
+  const btn = document.getElementById('editTranslateTitleBtn');
+  const enVal = (enInput ? enInput.value : '').trim();
+
+  if (!enVal) {
+    alert('英語の原題を入力してください');
+    if (enInput) enInput.focus();
+    return;
+  }
+
+  const oldBtnHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>⏳ 翻訳中...</span>`;
+  }
+
+  try {
+    const jaTitle = await translateTitleText(enVal);
+    if (jaTitle && jaInput) {
+      jaInput.value = jaTitle;
+      if (btn) {
+        btn.innerHTML = `<span>✅ 翻訳完了</span>`;
+        setTimeout(() => {
+          if (btn) {
+            btn.innerHTML = oldBtnHtml;
+            btn.disabled = false;
+          }
+        }, 1500);
+      }
+    }
+  } catch(e) {
+    console.error('Title translate error:', e);
+    alert('タイトル翻訳に失敗しました: ' + e.message);
+    if (btn) {
+      btn.innerHTML = oldBtnHtml;
+      btn.disabled = false;
+    }
+  }
+}
+
 async function executeEditAIAnalyze() {
+  const titleEnInput = document.getElementById('editPostTitleEn');
   const rawInput = document.getElementById('editPostRaw');
   const transInput = document.getElementById('editPostTranslation');
+  
+  const titleEnVal = (titleEnInput ? titleEnInput.value : '').trim();
   let textVal = (rawInput ? rawInput.value : '').trim();
   
   // 原文欄が空で翻訳欄に入力がある場合の柔軟な対応
@@ -2241,9 +2383,16 @@ async function executeEditAIAnalyze() {
     textVal = transInput.value.trim();
   }
 
-  if (editUploadedImages.length === 0 && !textVal) {
-    alert('写真を追加するか、英語の原文テキストを入力してください。');
+  // 英語原題、添付画像、本文原文のいずれかがあれば翻訳実行可能
+  if (editUploadedImages.length === 0 && !textVal && !titleEnVal) {
+    alert('写真を追加するか、英語の原題または原文テキストを入力してください。');
     return;
+  }
+
+  // AIに渡すテキストに英語原題も含める
+  let combinedTextForAI = textVal;
+  if (titleEnVal) {
+    combinedTextForAI = `Title: ${titleEnVal}\n\n${textVal || ''}`.trim();
   }
 
   const loadingBox = document.getElementById('editLoadingBox');
@@ -2261,7 +2410,7 @@ async function executeEditAIAnalyze() {
     if (apiKey) {
       console.log(`Using Gemini API Direct Call in Edit View with ${editUploadedImages.length} images...`);
       try {
-        draft = await callGeminiDirect(apiKey, editUploadedImages, textVal);
+        draft = await callGeminiDirect(apiKey, editUploadedImages, combinedTextForAI);
         if (draft) {
           console.log('✨ Gemini AI Direct analysis (Edit) succeeded!');
         } else {
@@ -2279,18 +2428,29 @@ async function executeEditAIAnalyze() {
     // 2. クライアント側フォールバック翻訳（Google Translate + MyMemory + 高速OCR + 内蔵辞書）
     if (!draft) {
       console.log('Using Client-side Robust Multi-tier Translation Engine for edit...');
-      draft = await clientSideTranslateEngine(textVal, editUploadedImages);
+      draft = await clientSideTranslateEngine(combinedTextForAI, editUploadedImages);
     }
 
     if (loadingBox) loadingBox.classList.add('hidden');
     if (aiBtn) aiBtn.disabled = false;
 
     if (draft) {
-      if (draft.title && document.getElementById('editPostTitle')) {
-        document.getElementById('editPostTitle').value = draft.title;
-      }
-      if (draft.title_en && document.getElementById('editPostTitleEn')) {
-        document.getElementById('editPostTitleEn').value = draft.title_en;
+      // ユーザーが手入力した英語原題がある場合、それを優先して日本語タイトルを確実に翻訳
+      if (titleEnVal) {
+        if (titleEnInput) titleEnInput.value = titleEnVal;
+        const translatedJaTitle = await translateTitleText(titleEnVal);
+        if (translatedJaTitle && document.getElementById('editPostTitle')) {
+          document.getElementById('editPostTitle').value = translatedJaTitle;
+        } else if (draft.title && document.getElementById('editPostTitle')) {
+          document.getElementById('editPostTitle').value = draft.title;
+        }
+      } else {
+        if (draft.title && document.getElementById('editPostTitle')) {
+          document.getElementById('editPostTitle').value = draft.title;
+        }
+        if (draft.title_en && document.getElementById('editPostTitleEn')) {
+          document.getElementById('editPostTitleEn').value = draft.title_en;
+        }
       }
       
       const trans = draft.text_translation || draft.image_translation || draft.summary;
@@ -2341,6 +2501,15 @@ async function executeEditAIAnalyze() {
 
       alert('✨ AIによる再翻訳・読取が完了しました！\n内容を確認して、一番下の「💾 変更を保存する」ボタンを押してください。');
     } else {
+      // draftが取得できなかった場合でも、titleEnValがあればタイトルだけは翻訳
+      if (titleEnVal) {
+        const jaTitle = await translateTitleText(titleEnVal);
+        if (jaTitle && document.getElementById('editPostTitle')) {
+          document.getElementById('editPostTitle').value = jaTitle;
+          alert('✨ 英語原題を日本語タイトルに翻訳しました！');
+          return;
+        }
+      }
       alert('⚠️ 翻訳テキストを取得できませんでした。手動で編集いただけます。');
     }
   } catch (err) {
