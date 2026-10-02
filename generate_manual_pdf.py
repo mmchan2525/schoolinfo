@@ -179,7 +179,7 @@ def create_manual():
     # ==========================================
     title_box = [
         Paragraph("School Info ｜ 取扱説明書 ＆ 活用マニュアル", style_title),
-        Paragraph("学校・幼稚園のおたより翻訳＆予定管理 ｜ 作成者: <b>chan_meg</b> (otayori-translate v1.0)", style_subtitle)
+        Paragraph("学校・幼稚園のおたより翻訳＆予定管理 ｜ 作成者: <b>chan_meg</b> (otayori-translate v.1.1)", style_subtitle)
     ]
     if os.path.exists("assets/avatar.jpg"):
         img_avatar = ReportLabImage("assets/avatar.jpg", width=16 * mm, height=16 * mm)

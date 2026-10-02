@@ -3087,7 +3087,7 @@ async function reloadAppLatest() {
     <h3 class="text-base font-black mb-1 tracking-wide">最新版を読み込んでいます</h3>
     <p class="text-xs text-rose-200 font-medium">キャッシュをクリアして最新プログラムを取得中...</p>
     <div class="mt-4 flex items-center gap-2 text-[11px] text-stone-300 bg-white/10 px-3 py-1.5 rounded-full border border-white/20 font-mono">
-      <span>otayori-translate v1.0</span>
+      <span>otayori-translate v.1.1</span>
       <span>•</span>
       <span>chan_meg</span>
     </div>
