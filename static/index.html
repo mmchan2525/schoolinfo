@@ -421,22 +421,39 @@
                    class="w-full p-2.5 m3-input text-xs text-stone-600 font-medium">
           </div>
 
-          <!-- おたよりの日本語訳 ＆ 連絡事項 -->
-          <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-2">
+          <!-- ① メッセージ本文の日本語訳 -->
+          <div id="editTextMessageSection" class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-2">
             <div class="flex items-center justify-between">
               <label class="text-xs font-bold text-amber-950 flex items-center gap-1">
-                <span>📝 おたよりの日本語訳 ＆ 連絡事項</span>
+                <span>📱 メッセージ・本文の日本語訳</span>
               </label>
               <button type="button" onclick="executeEditAIAnalyze()" class="text-[10.5px] font-bold text-amber-900 bg-amber-200/70 hover:bg-amber-200 active:scale-95 px-2.5 py-1 rounded-xl transition flex items-center gap-1 shadow-2xs border border-amber-300/60">
                 <span>✨ AI再翻訳</span>
               </button>
             </div>
-            <textarea id="editPostTranslation" rows="4" placeholder="おたよりの日本語訳・連絡事項"
+            <textarea id="editPostTextTranslation" rows="3" placeholder="メール本文や連絡事項の日本語訳"
                       class="w-full p-3 text-xs bg-white border border-amber-200 rounded-xl focus:outline-none font-bold leading-relaxed shadow-xs"></textarea>
             
             <details class="text-[11px] pt-1">
-              <summary class="font-bold text-amber-900 cursor-pointer hover:text-amber-950">英語原文（メール本文・画像OCR）を表示 / 編集</summary>
-              <textarea id="editPostRaw" rows="3" placeholder="英語の原文テキスト（修正後に「AI再翻訳」を押すと反映されます）"
+              <summary class="font-bold text-amber-900 cursor-pointer hover:text-amber-950">英語メッセージ原文を表示 / 編集</summary>
+              <textarea id="editPostTextRaw" rows="3" placeholder="英語の本文原文（修正後に「AI再翻訳」を押すと反映されます）"
+                        class="mt-1.5 w-full p-2.5 text-[10px] bg-white border border-stone-200 rounded-xl font-mono text-stone-600 leading-relaxed"></textarea>
+            </details>
+          </div>
+
+          <!-- ② 添付プリント写真 ＆ 画像内の日本語訳 -->
+          <div id="editImageMessageSection" class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/90 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-sky-950 flex items-center gap-1">
+                <span>🖼️ 添付プリント写真 ＆ 画像内の翻訳</span>
+              </label>
+            </div>
+            <textarea id="editPostImageTranslation" rows="3" placeholder="プリント画像内に書かれている内容の日本語訳"
+                      class="w-full p-3 text-xs bg-white border border-sky-200 rounded-xl focus:outline-none font-bold leading-relaxed shadow-xs"></textarea>
+            
+            <details class="text-[11px] pt-1">
+              <summary class="font-bold text-sky-900 cursor-pointer hover:text-sky-950">画像から読み取った英語原文 (OCR) を表示 / 編集</summary>
+              <textarea id="editPostImageRaw" rows="3" placeholder="画像内OCR英語テキスト"
                         class="mt-1.5 w-full p-2.5 text-[10px] bg-white border border-stone-200 rounded-xl font-mono text-stone-600 leading-relaxed"></textarea>
             </details>
           </div>
@@ -665,6 +682,6 @@
     <div id="lightboxThumbsContainer" class="flex items-center justify-center gap-2 overflow-x-auto py-1.5 no-scrollbar z-10" onclick="event.stopPropagation()"></div>
   </div>
 
-  <script src="./app.js?v=20261001_v4"></script>
+  <script src="./app.js?v=20261001_v5"></script>
 </body>
 </html>

@@ -823,9 +823,11 @@ function renderDetailPage(postId) {
   const deadlineDesc = escapeHtml(post.deadline_description || '提出');
   const items = post.items || [];
   
-  // 翻訳本文 (text_translation / image_translation / summary を統合)
-  const transText = formatWithDateDividers((post.text_translation || post.image_translation || (post.summary && post.summary !== post.title ? post.summary : '') || '').trim());
-  const rawText = (post.text_raw || post.image_raw || '').trim();
+  // 翻訳本文の抽出 (メッセージ本文・添付プリント写真を完全分離して両方保持)
+  let textTrans = (post.text_translation || '').trim();
+  let textRaw = (post.text_raw || '').trim();
+  let imgTrans = (post.image_translation || '').trim();
+  let imgRaw = (post.image_raw || '').trim();
 
   // 写真配列の正規化
   const postImages = (Array.isArray(post.images) && post.images.length > 0)
@@ -833,9 +835,22 @@ function renderDetailPage(postId) {
     : (post.image_url && !post.image_url.includes('no_image.svg') ? [post.image_url] : []);
   currentDetailPageImages = postImages;
 
+  // 互換性フォールバック (古い投稿等でsummaryのみ存在する場合)
+  if (!textTrans && !imgTrans && post.summary && post.summary !== post.title) {
+    if (postImages.length > 0) {
+      imgTrans = post.summary.trim();
+    } else {
+      textTrans = post.summary.trim();
+    }
+  }
+
+  const effectiveTextTrans = textTrans ? formatWithDateDividers(textTrans) : '';
+  const effectiveImgTrans = imgTrans ? formatWithDateDividers(imgTrans) : '';
+
   // お子さん ＆ タグHTML
+  const allTransCombined = `${effectiveTextTrans}\n${effectiveImgTrans}`.trim();
   const childBadge = (post.child_id && post.child_id !== 'all') ? getChildBadgeHtml(post.child_id) : '';
-  const tagsHtml = (normalizeTags(post.tags, transText)).map(t => getTagBadgeHtml(t)).join('');
+  const tagsHtml = (normalizeTags(post.tags, allTransCombined)).map(t => getTagBadgeHtml(t)).join('');
 
   // 持ち物HTML
   const itemsHtml = items.length > 0 ? `
@@ -882,54 +897,46 @@ function renderDetailPage(postId) {
     </div>
   ` : '';
 
-  // ① 日本語翻訳・連絡事項カード
-  const transCardHtml = transText ? `
-    <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2 shadow-xs">
-      <h4 class="text-xs font-bold text-amber-950 flex items-center gap-1">
-        <span>📱 日本語訳 ＆ 連絡事項</span>
-      </h4>
-      <div class="text-xs leading-relaxed text-stone-850 bg-white p-3.5 rounded-xl border border-amber-200/60 whitespace-pre-wrap font-medium shadow-xs">${escapeHtml(transText)}</div>
-      ${rawText ? `
-        <details class="text-[11px] pt-1">
-          <summary class="font-bold text-amber-900 cursor-pointer hover:text-amber-950">英語原文（メール本文・OCR）を表示</summary>
-          <div class="mt-1.5 p-2.5 rounded-xl bg-white border border-stone-200 text-stone-600 text-[10px] font-mono whitespace-pre-wrap leading-relaxed">${escapeHtml(rawText)}</div>
-        </details>
-      ` : ''}
-    </div>
-  ` : (rawText ? `
-    <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2">
-      <h4 class="text-xs font-bold text-amber-950 flex items-center gap-1">
-        <span>📄 英語原文テキスト</span>
-      </h4>
-      <div class="p-2.5 rounded-xl bg-white border border-stone-200 text-stone-600 text-[10px] font-mono whitespace-pre-wrap leading-relaxed">${escapeHtml(rawText)}</div>
-    </div>
-  ` : '');
+  // ① メッセージ本文の日本語訳カード
+  let textCardHtml = '';
+  if (effectiveTextTrans) {
+    textCardHtml = `
+      <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2 shadow-xs">
+        <h4 class="text-xs font-bold text-amber-950 flex items-center gap-1">
+          <span>📱 メッセージ・本文の日本語訳</span>
+        </h4>
+        <div class="text-xs leading-relaxed text-stone-850 bg-white p-3.5 rounded-xl border border-amber-200/60 whitespace-pre-wrap font-medium shadow-xs">${escapeHtml(effectiveTextTrans)}</div>
+        ${textRaw ? `
+          <details class="text-[11px] pt-1">
+            <summary class="font-bold text-amber-900 cursor-pointer hover:text-amber-950">英語メッセージ原文を表示</summary>
+            <div class="mt-1.5 p-2.5 rounded-xl bg-white border border-stone-200 text-stone-600 text-[10px] font-mono whitespace-pre-wrap leading-relaxed">${escapeHtml(textRaw)}</div>
+          </details>
+        ` : ''}
+      </div>
+    `;
+  } else if (textRaw) {
+    textCardHtml = `
+      <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2">
+        <h4 class="text-xs font-bold text-amber-950 flex items-center gap-1">
+          <span>📱 英語メッセージ原文</span>
+        </h4>
+        <div class="p-2.5 rounded-xl bg-white border border-stone-200 text-stone-600 text-[10px] font-mono whitespace-pre-wrap leading-relaxed">${escapeHtml(textRaw)}</div>
+      </div>
+    `;
+  }
 
-  // ② 添付写真カード (1枚または複数枚フォトギャラリー)
+  // ② 添付プリント写真 ＆ 写真内翻訳カード
   let imageCardHtml = '';
-  if (postImages.length === 1) {
-    imageCardHtml = `
-      <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-2 shadow-xs">
-        <div class="flex items-center justify-between">
-          <h4 class="text-xs font-bold text-sky-950 flex items-center gap-1">
-            <span>🖼️ 添付プリント写真</span>
-          </h4>
-          <span class="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-full">タップで拡大</span>
-        </div>
+  if (postImages.length > 0 || effectiveImgTrans || imgRaw) {
+    let imagesMarkup = '';
+    if (postImages.length === 1) {
+      imagesMarkup = `
         <div class="w-full rounded-xl bg-white overflow-hidden border border-sky-200 flex items-center justify-center p-2 cursor-pointer group hover:border-sky-400 transition" onclick="openLightbox(currentDetailPageImages, 0)">
           <img src="${escapeHtml(postImages[0])}" class="max-h-72 w-auto object-contain rounded-lg group-hover:scale-[1.01] transition" alt="プリント">
         </div>
-      </div>
-    `;
-  } else if (postImages.length > 1) {
-    imageCardHtml = `
-      <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-2.5 shadow-xs">
-        <div class="flex items-center justify-between">
-          <h4 class="text-xs font-bold text-sky-950 flex items-center gap-1">
-            <span>🖼️ 添付プリント写真 (${postImages.length}枚)</span>
-          </h4>
-          <span class="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-full">タップで拡大</span>
-        </div>
+      `;
+    } else if (postImages.length > 1) {
+      imagesMarkup = `
         <div class="photo-gallery-grid">
           ${postImages.map((imgUrl, idx) => `
             <div class="gallery-photo-item shadow-2xs group" onclick="openLightbox(currentDetailPageImages, ${idx})">
@@ -940,28 +947,46 @@ function renderDetailPage(postId) {
             </div>
           `).join('')}
         </div>
+      `;
+    }
+
+    imageCardHtml = `
+      <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-2.5 shadow-xs">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-sky-950 flex items-center gap-1">
+            <span>🖼️ 添付プリント写真 ＆ 画像内の翻訳${postImages.length > 1 ? ` (${postImages.length}枚)` : ''}</span>
+          </h4>
+          ${postImages.length > 0 ? `<span class="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-full">タップで拡大</span>` : ''}
+        </div>
+        ${imagesMarkup}
+        ${effectiveImgTrans ? `
+          <div class="space-y-1 pt-1">
+            <div class="text-[11px] font-bold text-sky-950 flex items-center gap-1">
+              <span>📝 プリント写真の日本語訳:</span>
+            </div>
+            <div class="text-xs leading-relaxed text-stone-850 bg-white p-3 rounded-xl border border-sky-200/80 whitespace-pre-wrap font-medium shadow-xs">${escapeHtml(effectiveImgTrans)}</div>
+          </div>
+        ` : ''}
+        ${imgRaw ? `
+          <details class="text-[11px] pt-0.5">
+            <summary class="font-bold text-sky-900 cursor-pointer hover:text-sky-950">プリントから読み取った英語原文 (OCR) を表示</summary>
+            <div class="mt-1.5 p-2.5 rounded-xl bg-white border border-stone-200 text-stone-600 text-[10px] font-mono whitespace-pre-wrap leading-relaxed">${escapeHtml(imgRaw)}</div>
+          </details>
+        ` : ''}
       </div>
     `;
   }
 
-  let shareText = `【おたより】${post.title}
-
-`;
-  if (transText) shareText += `📱 内容:
-${transText}
-
-`;
-  if (items.length > 0) shareText += `🎒 持ち物: ${items.join(', ')}
-`;
+  let shareText = `【おたより】${post.title}\n\n`;
+  if (effectiveTextTrans) shareText += `📱 本文の翻訳:\n${effectiveTextTrans}\n\n`;
+  if (effectiveImgTrans) shareText += `🖼️ プリントの翻訳:\n${effectiveImgTrans}\n\n`;
+  if (items.length > 0) shareText += `🎒 持ち物: ${items.join(', ')}\n`;
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
 
   const calTitle = encodeURIComponent(post.title || '');
   const calLoc = encodeURIComponent(post.location || '');
-  const calDesc = encodeURIComponent(`${post.title_en || ''}
-
-${transText}
-
-持ち物: ${items.join(', ')}`);
+  const allTrans = [effectiveTextTrans ? `【本文翻訳】\n${effectiveTextTrans}` : '', effectiveImgTrans ? `【プリント翻訳】\n${effectiveImgTrans}` : ''].filter(Boolean).join('\n\n');
+  const calDesc = encodeURIComponent(`${post.title_en || ''}\n\n${allTrans}\n\n持ち物: ${items.join(', ')}`);
   const dClean = (dateVal || '20260907').replace(/-/g, '');
   const calDates = `${dClean}/${dClean}`;
   const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${calTitle}&dates=${calDates}&details=${calDesc}&location=${calLoc}`;
@@ -993,7 +1018,7 @@ ${transText}
 
       ${dateTimeHtml}
       ${itemsHtml}
-      ${transCardHtml}
+      ${textCardHtml}
       ${imageCardHtml}
 
       <div class="pt-2 grid grid-cols-2 gap-2">
@@ -1566,13 +1591,19 @@ tags に設定できる値は以下の5種類のみです（複数可）:
         }
       });
     }
+  }
+
+  if (imagesArray.length > 0 && textContent) {
+    const countNote = imagesArray.length > 1 ? `（全${imagesArray.length}枚のプリント写真）` : '';
+    parts.push({
+      text: systemPrompt + `\n\n【英語メッセージ本文】:\n${textContent}\n\n【添付写真】: ${imagesArray.length}枚のプリント画像が添付されています。\n\n指示: 英語メッセージ本文の翻訳（text_translation / text_raw）と、添付プリント写真内の英文の読取・翻訳（image_translation / image_raw）の両方をそれぞれ確実に抽出し、日程・持ち物・タイトルを統合して指定のJSON形式のみで出力してください。`
+    });
+  } else if (imagesArray.length > 0) {
     const countNote = imagesArray.length > 1 ? `（全${imagesArray.length}枚のプリント写真）` : '';
     parts.push({
       text: systemPrompt + `\n\n添付のプリント画像${countNote}を順番に読み取り、全体の文脈をつなげて上記の指示に従って指定のJSON形式のみで出力してください。`
     });
-  }
-
-  if (textContent) {
+  } else if (textContent) {
     parts.push({
       text: systemPrompt + `\n\n【英語メッセージ本文】:\n${textContent}\n\n上記の文章を自然な日本語に翻訳し、指定のJSON形式のみで出力してください。`
     });
@@ -2154,12 +2185,29 @@ function renderEditPage(postId) {
   document.getElementById('editPostTitle').value = post.title || '';
   document.getElementById('editPostTitleEn').value = post.title_en || '';
   
-  // 統合された翻訳テキストと英語原文を確実にフォームへセット
-  const currentTrans = formatWithDateDividers(post.text_translation || post.image_translation || (post.summary && post.summary !== post.title ? post.summary : '') || '');
-  const currentRaw = post.text_raw || post.image_raw || '';
-  
-  document.getElementById('editPostTranslation').value = currentTrans;
-  document.getElementById('editPostRaw').value = currentRaw;
+  let textTrans = (post.text_translation || '').trim();
+  let textRaw = (post.text_raw || '').trim();
+  let imgTrans = (post.image_translation || '').trim();
+  let imgRaw = (post.image_raw || '').trim();
+
+  // 互換性フォールバック (古い投稿等でsummaryのみ存在する場合)
+  if (!textTrans && !imgTrans && post.summary && post.summary !== post.title) {
+    if (editUploadedImages.length > 0) {
+      imgTrans = post.summary.trim();
+    } else {
+      textTrans = post.summary.trim();
+    }
+  }
+
+  const textTransEl = document.getElementById('editPostTextTranslation');
+  const textRawEl = document.getElementById('editPostTextRaw');
+  const imgTransEl = document.getElementById('editPostImageTranslation');
+  const imgRawEl = document.getElementById('editPostImageRaw');
+
+  if (textTransEl) textTransEl.value = textTrans ? formatWithDateDividers(textTrans) : '';
+  if (textRawEl) textRawEl.value = textRaw;
+  if (imgTransEl) imgTransEl.value = imgTrans ? formatWithDateDividers(imgTrans) : '';
+  if (imgRawEl) imgRawEl.value = imgRaw;
 
   document.getElementById('editPostDate').value = post.date || '';
   document.getElementById('editPostTimeStart').value = post.time_start || '';
@@ -2437,25 +2485,27 @@ async function translateEditTitleFromEn() {
 async function executeEditAIAnalyze() {
   const titleJaInput = document.getElementById('editPostTitle');
   const titleEnInput = document.getElementById('editPostTitleEn');
-  const rawInput = document.getElementById('editPostRaw');
-  const transInput = document.getElementById('editPostTranslation');
+  const textRawInput = document.getElementById('editPostTextRaw');
+  const textTransInput = document.getElementById('editPostTextTranslation');
+  const imgRawInput = document.getElementById('editPostImageRaw');
+  const imgTransInput = document.getElementById('editPostImageTranslation');
   
-  let rawText = (rawInput ? rawInput.value : '').trim();
-  const transText = (transInput ? transInput.value : '').trim();
+  let textRawVal = (textRawInput ? textRawInput.value : '').trim();
+  const textTransVal = (textTransInput ? textTransInput.value : '').trim();
   const titleEnVal = (titleEnInput ? titleEnInput.value : '').trim();
   
   // 原文欄が空で翻訳欄に入力がある場合の柔軟な対応
-  if (!rawText && transText) {
-    rawText = transText;
+  if (!textRawVal && textTransVal) {
+    textRawVal = textTransVal;
   }
 
   // 英語原文も写真もなく英語原題のみが変更された場合
-  if (editUploadedImages.length === 0 && !rawText && titleEnVal) {
+  if (editUploadedImages.length === 0 && !textRawVal && titleEnVal) {
     await translateEditTitleFromEn();
     return;
   }
 
-  if (editUploadedImages.length === 0 && !rawText) {
+  if (editUploadedImages.length === 0 && !textRawVal) {
     alert('写真を追加するか、英語の原文テキストを入力してください。');
     return;
   }
@@ -2475,7 +2525,7 @@ async function executeEditAIAnalyze() {
     if (apiKey) {
       console.log(`Using Gemini API Direct Call in Edit View with ${editUploadedImages.length} images...`);
       try {
-        draft = await callGeminiDirect(apiKey, editUploadedImages, rawText);
+        draft = await callGeminiDirect(apiKey, editUploadedImages, textRawVal);
         if (draft) {
           console.log('✨ Gemini AI Direct analysis (Edit) succeeded!');
         } else {
@@ -2489,7 +2539,7 @@ async function executeEditAIAnalyze() {
     // 2. クライアント側フォールバック翻訳（Google Translate + MyMemory + 高速OCR + 内蔵辞書）
     if (!draft) {
       console.log('Using Client-side Robust Multi-tier Translation Engine for edit...');
-      draft = await clientSideTranslateEngine(rawText, editUploadedImages);
+      draft = await clientSideTranslateEngine(textRawVal, editUploadedImages);
     }
 
     if (loadingBox) loadingBox.classList.add('hidden');
@@ -2508,16 +2558,24 @@ async function executeEditAIAnalyze() {
         setTimeout(() => titleEnInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/40'), 2000);
       }
       
-      const trans = draft.text_translation || draft.image_translation || draft.summary;
-      if (trans && transInput) {
-        transInput.value = formatWithDateDividers(trans);
-        transInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50/40');
-        setTimeout(() => transInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/40'), 2000);
+      // 本文翻訳の反映
+      if (draft.text_translation && textTransInput) {
+        textTransInput.value = formatWithDateDividers(draft.text_translation);
+        textTransInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50/40');
+        setTimeout(() => textTransInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/40'), 2000);
+      }
+      if (draft.text_raw && textRawInput) {
+        textRawInput.value = draft.text_raw;
       }
 
-      const raw = draft.text_raw || draft.image_raw || rawText;
-      if (raw && rawInput) {
-        rawInput.value = raw;
+      // 画像翻訳の反映
+      if (draft.image_translation && imgTransInput) {
+        imgTransInput.value = formatWithDateDividers(draft.image_translation);
+        imgTransInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50/40');
+        setTimeout(() => imgTransInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/40'), 2000);
+      }
+      if (draft.image_raw && imgRawInput) {
+        imgRawInput.value = draft.image_raw;
       }
 
       if (draft.items && Array.isArray(draft.items) && draft.items.length > 0 && document.getElementById('editPostItems')) {
@@ -2556,7 +2614,7 @@ async function executeEditAIAnalyze() {
         renderEditTags();
       }
 
-      alert('✨ 英語原文に合わせてタイトル・日本語訳・日程・持ち物を更新しました！\n内容を確認して、一番下の「💾 変更を保存する」ボタンを押してください。');
+      alert('✨ 英語原文・画像に合わせてタイトル・日本語訳・日程・持ち物を更新しました！\n内容を確認して、一番下の「💾 変更を保存する」ボタンを押してください。');
     } else {
       alert('⚠️ 翻訳テキストを取得できませんでした。手動で編集いただけます。');
     }
@@ -2581,19 +2639,26 @@ function submitEditPost(e) {
   const itemsStr = document.getElementById('editPostItems').value.trim();
   const itemsArr = itemsStr ? itemsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-  const transVal = document.getElementById('editPostTranslation').value.trim();
-  const rawVal = document.getElementById('editPostRaw').value.trim();
+  const textTransEl = document.getElementById('editPostTextTranslation');
+  const textRawEl = document.getElementById('editPostTextRaw');
+  const imgTransEl = document.getElementById('editPostImageTranslation');
+  const imgRawEl = document.getElementById('editPostImageRaw');
+
+  const textTrans = textTransEl ? textTransEl.value.trim() : '';
+  const textRaw = textRawEl ? textRawEl.value.trim() : '';
+  const imgTrans = imgTransEl ? imgTransEl.value.trim() : '';
+  const imgRaw = imgRawEl ? imgRawEl.value.trim() : '';
 
   const updateData = {
     ...oldPost,
     id: editPostId,
     title: title,
     title_en: document.getElementById('editPostTitleEn').value.trim() || null,
-    text_translation: transVal ? formatWithDateDividers(transVal) : null,
-    image_translation: editUploadedImages.length > 0 ? (transVal || null) : null,
-    text_raw: rawVal || null,
-    image_raw: editUploadedImages.length > 0 ? (rawVal || null) : null,
-    summary: transVal || title,
+    text_translation: textTrans ? formatWithDateDividers(textTrans) : null,
+    text_raw: textRaw || null,
+    image_translation: imgTrans ? formatWithDateDividers(imgTrans) : null,
+    image_raw: imgRaw || null,
+    summary: textTrans || imgTrans || title,
     date: document.getElementById('editPostDate').value || null,
     time_start: document.getElementById('editPostTimeStart').value || null,
     location: document.getElementById('editPostLocation').value.trim() || null,
